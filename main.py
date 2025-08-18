@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException
+import os
+from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from database import create_db_and_tables, get_db, SessionLocal
@@ -6,11 +7,27 @@ import spotify
 import crud
 import models
 import datetime
-from apscheduler.schedulers.background import BackgroundScheduler
-from contextlib import asynccontextmanager
 
-def update_currently_playing():
-    db = SessionLocal()
+# This will be loaded from Replit's Secrets
+CRON_SECRET = os.getenv("CRON_SECRET")
+
+app = FastAPI()
+
+# This is a one-time startup event, not a background task manager.
+# Replit will run this when the application boots.
+@app.on_event("startup")
+def on_startup():
+    create_db_and_tables()
+
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
+
+@app.post("/tasks/update-playing")
+def update_playing_task(x_cron_secret: str = Header(None), db: Session = Depends(get_db)):
+    if not CRON_SECRET or x_cron_secret != CRON_SECRET:
+        raise HTTPException(status_code=401, detail="Unauthorized.")
+
     active_shares = crud.get_active_shares(db)
     for share in active_shares:
         user = share.user
@@ -22,11 +39,8 @@ def update_currently_playing():
             try:
                 new_token_data = spotify.refresh_access_token(token.refresh_token)
                 crud.create_or_update_token(
-                    db,
-                    user.id,
-                    new_token_data["access_token"],
-                    token.refresh_token,
-                    new_token_data["expires_at"],
+                    db, user.id, new_token_data["access_token"],
+                    token.refresh_token, new_token_data["expires_at"]
                 )
                 token.access_token = new_token_data["access_token"]
             except Exception:
@@ -43,32 +57,10 @@ def update_currently_playing():
                 "currently_playing": True,
             }
         else:
-            track_data = {
-                "track_name": "Not currently playing",
-                "artist_name": "",
-                "album_cover_url": "",
-                "spotify_track_url": "",
-                "currently_playing": False,
-            }
+            track_data = { "track_name": "Not currently playing", "artist_name": "", "album_cover_url": "", "spotify_track_url": "", "currently_playing": False }
         crud.create_or_update_track(db, user.id, track_data)
-    db.close()
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    create_db_and_tables()
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(update_currently_playing, "interval", seconds=15)
-    scheduler.start()
-    yield
-    # Shutdown
-    scheduler.shutdown()
-
-app = FastAPI(lifespan=lifespan)
-
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
+    return {"message": "Track update task completed."}
 
 @app.get("/auth/login")
 def auth_login():
