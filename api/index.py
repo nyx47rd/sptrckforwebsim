@@ -198,7 +198,14 @@ def auth_callback(code: str, db: Session = Depends(get_db)):
         db=db, user_id=user.id, access_token=token_data["access_token"],
         refresh_token=token_data["refresh_token"], expires_at=token_data["expires_at"]
     )
-    return {"message": "Successfully authenticated. You can close this window."}
+
+    # Redirect back to the frontend with user info
+    frontend_url = "https://sptrckforwebsim.on.websim.com"
+    params = {
+        "spotify_id": user.spotify_id,
+        "display_name": user.display_name
+    }
+    return RedirectResponse(f"{frontend_url}?{urlencode(params)}")
 
 @app.post("/api/share/start")
 def share_start(share_request: ShareRequest, db: Session = Depends(get_db)):
