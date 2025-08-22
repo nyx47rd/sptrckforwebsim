@@ -1,39 +1,82 @@
-# This script is to be run once manually by the user on their local machine
-# to set up the database tables in their Render PostgreSQL instance.
+# Bu betik, veritabanı tablolarını bir kereliğine oluşturmak için kullanılır.
+# Sadece telefon gibi kısıtlı ortamlarda, gerekli olan minimum paketlerle çalışması için tasarlandı.
+#
+# KULLANIM:
+# 1. Bu dosyanın yanına .env adında bir dosya oluşturun.
+# 2. .env dosyasının içine `DATABASE_URL=sizin_render_url_adresiniz` şeklinde veritabanı adresinizi yazın.
+# 3. Terminalde `pip install sqlalchemy psycopg2-binary python-dotenv` komutunu çalıştırın.
+# 4. `python create_tables.py` komutunu çalıştırın.
 
 import os
+import datetime
 from dotenv import load_dotenv
+from sqlalchemy import (
+    create_engine,
+    Column,
+    Integer,
+    String,
+    DateTime,
+    ForeignKey,
+    Boolean,
+)
+from sqlalchemy.orm import relationship, declarative_base
 
-print("Loading environment variables for database setup...")
-# The user should create a local .env file with their Render DATABASE_URL.
-# Example: DATABASE_URL=postgresql://user:password@host:port/database
+print("Gerekli paketler yükleniyor ve ortam değişkenleri okunuyor...")
 load_dotenv()
 
-# We import the engine and Base from our main application file.
-# This ensures we use the exact same configuration.
-# The script needs the DATABASE_URL to be set in the environment to do this.
-if not os.getenv("DATABASE_URL"):
-    print("---")
-    print("Error: DATABASE_URL environment variable not set.")
-    print("Please create a file named .env in this directory.")
-    print("Inside the .env file, add one line with your Render PostgreSQL URL:")
-    print("DATABASE_URL=postgresql://user:password@host:port/database")
-    print("---")
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    print("\n--- HATA ---")
+    print("DATABASE_URL bulunamadı.")
+    print("Lütfen bu betikle aynı dizinde bir .env dosyası oluşturduğunuzdan")
+    print("ve içine Render'dan aldığınız veritabanı adresini yazdığınızdan emin olun.")
+    print("Örnek: DATABASE_URL=postgresql://kullanici:sifre@host:port/veritabani")
+    print("------------")
 else:
     try:
-        # We import these after ensuring the environment variable is set.
-        from api.index import engine, Base
+        print("Veritabanına bağlanılıyor...")
+        engine = create_engine(DATABASE_URL)
+        Base = declarative_base()
 
-        print("Connecting to the database and creating tables...")
+        # --- Modeller ---
+        # Ana uygulamadaki modellerin aynısı, buraya kopyalandı.
+        # Bu, `fastapi` gibi büyük paketleri kurma zorunluluğunu ortadan kaldırır.
+        class User(Base):
+            __tablename__ = "users"
+            id = Column(Integer, primary_key=True, index=True)
+            spotify_id = Column(String, unique=True, index=True)
+            display_name = Column(String)
+            profile_pic_url = Column(String, nullable=True)
+            token = relationship("Token", uselist=False, back_populates="user")
+            active_share = relationship("ActiveShare", uselist=False, back_populates="user")
 
-        # The Base object from our application knows about all the models (User, Token, etc.).
-        # The engine object knows how to connect to the database.
-        # This command tells the database to create any tables that don't exist yet.
+        class Token(Base):
+            __tablename__ = "tokens"
+            id = Column(Integer, primary_key=True, index=True)
+            user_id = Column(Integer, ForeignKey("users.id"))
+            access_token = Column(String)
+            refresh_token = Column(String)
+            expires_at = Column(DateTime)
+            user = relationship("User", back_populates="token")
+
+        class ActiveShare(Base):
+            __tablename__ = "active_shares"
+            id = Column(Integer, primary_key=True, index=True)
+            user_id = Column(Integer, ForeignKey("users.id"), unique=True)
+            expires_at = Column(DateTime)
+            user = relationship("User", back_populates="active_share")
+
+        print("Tablolar oluşturuluyor...")
         Base.metadata.create_all(bind=engine)
 
-        print("\nSuccess! Database tables created.")
-        print("You can now deploy your application to Vercel.")
+        print("\n--- BAŞARILI! ---")
+        print("Veritabanı tabloları başarıyla oluşturuldu.")
+        print("Artık Vercel'deki uygulamanız bu veritabanını kullanmaya hazır.")
+        print("-----------------")
 
     except Exception as e:
-        print(f"\nAn error occurred: {e}")
-        print("Please check your DATABASE_URL in the .env file and ensure the database is accessible from your computer.")
+        print(f"\n--- HATA ---")
+        print(f"Bir hata oluştu: {e}")
+        print("Lütfen .env dosyasındaki DATABASE_URL adresinizi ve internet bağlantınızı kontrol edin.")
+        print("------------")
