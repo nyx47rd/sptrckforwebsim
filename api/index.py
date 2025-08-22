@@ -170,8 +170,24 @@ def crud_stop_sharing(db: Session, user_id: int):
 def crud_get_active_shares(db: Session):
     return db.query(ActiveShare).filter(ActiveShare.expires_at > datetime.datetime.utcnow()).all()
 
+from fastapi.middleware.cors import CORSMiddleware
+
 # --- FASTAPI APP ---
 app = FastAPI()
+
+origins = [
+    "https://sptrckforwebsimy.on.websim.com",
+    "http://localhost",
+    "http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/api")
 def handle_root():
@@ -200,7 +216,7 @@ def auth_callback(code: str, db: Session = Depends(get_db)):
     )
 
     # Redirect back to the frontend with user info
-    frontend_url = "https://websim.com/@ysr/sptrckforwebsim"
+    frontend_url = "https://sptrckforwebsimy.on.websim.com/"
     params = {
         "spotify_id": user.spotify_id,
         "display_name": user.display_name
