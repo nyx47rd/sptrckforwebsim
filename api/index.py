@@ -200,7 +200,7 @@ def auth_callback(code: str, db: Session = Depends(get_db)):
     )
 
     # Redirect back to the frontend with user info
-    frontend_url = "https://websim.com/@ysr/sptrckforwebsim"
+    frontend_url = "https://sptrckforwebsimy.on.websim.com/"
     params = {
         "spotify_id": user.spotify_id,
         "display_name": user.display_name
