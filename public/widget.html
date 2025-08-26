@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="tr">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="color-scheme" content="dark light">
-  <title>Now Playing - Spotify Kart</title>
+  <title>Now Playing - Spotify Card</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
@@ -108,13 +108,13 @@
   <div class="card" role="status" aria-live="polite">
     <div class="media">
       <div class="cover-wrap">
-        <img id="cover" class="cover skeleton" alt="Albüm kapağı" loading="lazy" />
+        <img id="cover" class="cover skeleton" alt="Album cover" loading="lazy" />
         <div id="pulse" class="pulseRing" aria-hidden="true"></div>
       </div>
       <div class="meta">
         <div class="status">
           <span id="dot" class="dot"></span>
-          <span id="state" class="state">Bağlanıyor…</span>
+          <span id="state" class="state">Connecting…</span>
         </div>
         <div id="title" class="title">—</div>
         <div id="artist" class="artist">—</div>
@@ -125,7 +125,7 @@
         <svg class="sp-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M12 0a12 12 0 1 0 .001 24.001A12 12 0 0 0 12 0Zm5.512 17.357a.75.75 0 0 1-1.034.246c-2.833-1.732-6.404-2.125-10.607-1.17a.75.75 0 1 1-.332-1.462c4.58-1.04 8.5-.6 11.603 1.296a.75.75 0 0 1 .37 1.09Zm1.367-3.037a.9.9 0 0 1-1.24.292c-3.247-1.997-8.2-2.58-12.037-1.416a.9.9 0 1 1-.52-1.722c4.281-1.29 9.73-.64 13.43 1.574a.9.9 0 0 1 .367 1.272Zm.124-3.224c-3.883-2.303-10.356-2.515-14.065-1.39a1.05 1.05 0 1 1-.603-2.008c4.213-1.266 11.35-1.01 15.77 1.625a1.05 1.05 0 0 1-1.102 1.773Z"></path>
         </svg>
-        Spotify’da Aç
+        Open in Spotify
       </a>
     </div>
   </div>
@@ -175,7 +175,7 @@
         els.title.textContent = parts.title;
         els.artist.textContent = parts.artists;
 
-        els.state.textContent = currently_playing ? 'Şu an çalıyor' : 'Duraklatıldı';
+        els.state.textContent = currently_playing ? 'Now playing' : 'Paused';
         els.dot.classList.toggle('playing', !!currently_playing);
         els.pulse.style.borderColor = currently_playing ? 'rgba(29,185,84,.35)' : 'rgba(255,255,255,.08)';
 
@@ -198,7 +198,7 @@
         }
 
       } catch(e){
-        els.state.textContent = 'Bağlantı hatası';
+        els.state.textContent = 'Connection error';
         els.dot.classList.remove('playing');
         els.pulse.style.borderColor = 'rgba(255,255,255,.08)';
       }
