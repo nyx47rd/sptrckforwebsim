@@ -29,6 +29,7 @@
       align-items:center;
       justify-content:center;
     }
+    a{text-decoration:none; color:inherit;}
     .card{
       width:100%;
       max-width:680px;
@@ -105,30 +106,31 @@
   </style>
 </head>
 <body>
-  <div class="card" role="status" aria-live="polite">
-    <div class="media">
-      <div class="cover-wrap">
-        <img id="cover" class="cover skeleton" alt="Album cover" loading="lazy" />
-        <div id="pulse" class="pulseRing" aria-hidden="true"></div>
-      </div>
-      <div class="meta">
-        <div class="status">
-          <span id="dot" class="dot"></span>
-          <span id="state" class="state">Connecting…</span>
+  <a id="cardLink" href="#" target="_blank" rel="noopener" style="display: block;">
+    <div class="card" role="status" aria-live="polite">
+      <div class="media">
+        <div class="cover-wrap">
+          <img id="cover" class="cover skeleton" alt="Album cover" loading="lazy" />
+          <div id="pulse" class="pulseRing" aria-hidden="true"></div>
         </div>
-        <div id="title" class="title">—</div>
-        <div id="artist" class="artist">—</div>
+        <div class="meta">
+          <div class="status">
+            <span id="dot" class="dot"></span>
+            <span id="state" class="state">Connecting…</span>
+          </div>
+          <div id="title" class="title">—</div>
+          <div id="artist" class="artist">—</div>
+        </div>
+      </div>
+      <div class="actions">
+        <div class="sp-icon-wrap">
+          <svg class="sp-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 0a12 12 0 1 0 .001 24.001A12 12 0 0 0 12 0Zm5.512 17.357a.75.75 0 0 1-1.034.246c-2.833-1.732-6.404-2.125-10.607-1.17a.75.75 0 1 1-.332-1.462c4.58-1.04 8.5-.6 11.603 1.296a.75.75 0 0 1 .37 1.09Zm1.367-3.037a.9.9 0 0 1-1.24.292c-3.247-1.997-8.2-2.58-12.037-1.416a.9.9 0 1 1-.52-1.722c4.281-1.29 9.73-.64 13.43 1.574a.9.9 0 0 1 .367 1.272Zm.124-3.224c-3.883-2.303-10.356-2.515-14.065-1.39a1.05 1.05 0 1 1-.603-2.008c4.213-1.266 11.35-1.01 15.77 1.625a1.05 1.05 0 0 1-1.102 1.773Z"></path>
+          </svg>
+        </div>
       </div>
     </div>
-    <div class="actions">
-      <a id="spotifyLink" class="btn" href="#" target="_blank" rel="noopener">
-        <svg class="sp-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M12 0a12 12 0 1 0 .001 24.001A12 12 0 0 0 12 0Zm5.512 17.357a.75.75 0 0 1-1.034.246c-2.833-1.732-6.404-2.125-10.607-1.17a.75.75 0 1 1-.332-1.462c4.58-1.04 8.5-.6 11.603 1.296a.75.75 0 0 1 .37 1.09Zm1.367-3.037a.9.9 0 0 1-1.24.292c-3.247-1.997-8.2-2.58-12.037-1.416a.9.9 0 1 1-.52-1.722c4.281-1.29 9.73-.64 13.43 1.574a.9.9 0 0 1 .367 1.272Zm.124-3.224c-3.883-2.303-10.356-2.515-14.065-1.39a1.05 1.05 0 1 1-.603-2.008c4.213-1.266 11.35-1.01 15.77 1.625a1.05 1.05 0 0 1-1.102 1.773Z"></path>
-        </svg>
-        Open in Spotify
-      </a>
-    </div>
-  </div>
+  </a>
 
   <script>
     const ENDPOINT = '/api/now-playing';
@@ -141,7 +143,7 @@
       state: document.getElementById('state'),
       title: document.getElementById('title'),
       artist: document.getElementById('artist'),
-      link: document.getElementById('spotifyLink')
+      link: document.getElementById('cardLink')
     };
 
     let timer = null;
@@ -189,12 +191,12 @@
           img.src = album_cover;
         }
 
-        if (spotify_link) {
+        if (spotify_link && currently_playing) {
           els.link.href = spotify_link;
-          els.link.style.visibility = 'visible';
+          els.link.style.pointerEvents = 'auto';
         } else {
           els.link.removeAttribute('href');
-          els.link.style.visibility = 'hidden';
+          els.link.style.pointerEvents = 'none';
         }
 
       } catch(e){
