@@ -77,11 +77,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
+@app.get("/api")
 def handle_root():
     return {"message": "Personal Now Listening API"}
 
-@app.get("/now-playing", response_model=NowPlayingResponse)
+@app.get("/api/now-playing", response_model=NowPlayingResponse)
 def now_playing():
     if not all([SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, MY_SPOTIFY_REFRESH_TOKEN]):
         raise HTTPException(
