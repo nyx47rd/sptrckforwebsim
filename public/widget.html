@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="dark light">
+  <title>Now Playing - Spotify Kart</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --card:#0d1117;
+      --text:#e5e7eb;
+      --muted:#9aa4b2;
+      --accent:#1DB954;
+      --border:rgba(255,255,255,.08);
+      --shadow:rgba(0,0,0,.45);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;
+      color:var(--text);
+      background:transparent;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .card{
+      width:100%;
+      max-width:680px;
+      min-height:144px;
+      background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)) , var(--card);
+      border:1px solid var(--border);
+      box-shadow: 0 10px 30px var(--shadow), inset 0 1px 0 rgba(255,255,255,.04);
+      border-radius:16px;
+      padding:14px;
+      display:flex;
+      gap:14px;
+      align-items:center;
+      backdrop-filter:saturate(120%) blur(6px);
+    }
+    .media{display:flex; align-items:center; gap:14px; flex:1; min-width:0;}
+    .cover-wrap{
+      position:relative; width:84px; height:84px; flex:0 0 auto;
+      border-radius:12px; overflow:hidden; background:#131820; border:1px solid var(--border);
+      box-shadow: 0 6px 16px var(--shadow);
+    }
+    .cover{
+      width:100%; height:100%; object-fit:cover; display:block; opacity:0; transition:opacity .3s ease;
+    }
+    .cover.loaded{opacity:1}
+    .pulseRing{
+      position:absolute; inset:-6px; border-radius:14px; pointer-events:none;
+      border:2px solid rgba(29,185,84,.0); transition:border-color .25s ease;
+    }
+    .status{display:flex; align-items:center; gap:8px; margin-bottom:4px;}
+    .dot{
+      width:10px; height:10px; border-radius:999px;
+      background:var(--muted); box-shadow:0 0 0 0 rgba(29,185,84,.0);
+    }
+    .dot.playing{
+      background:var(--accent);
+      animation:pulse 1.5s infinite;
+      box-shadow:0 0 0 0 rgba(29,185,84,.45);
+    }
+    @keyframes pulse{
+      0%{box-shadow:0 0 0 0 rgba(29,185,84,.45)}
+      70%{box-shadow:0 0 0 10px rgba(29,185,84,0)}
+      100%{box-shadow:0 0 0 0 rgba(29,185,84,0)}
+    }
+    .meta{min-width:0; flex:1;}
+    .state{font-size:.85rem; color:var(--muted);}
+    .title{
+      font-weight:600; font-size:1.02rem; line-height:1.25;
+      overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+    }
+    .artist{
+      color:var(--muted); font-size:.95rem;
+      overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+    }
+    .actions{display:flex; align-items:center; gap:10px;}
+    .btn{
+      display:inline-flex; align-items:center; gap:8px;
+      background:rgba(29,185,84,.14); color:#d7ffe5; border:1px solid rgba(29,185,84,.35);
+      padding:10px 12px; border-radius:10px; text-decoration:none; font-weight:600; font-size:.95rem;
+      transition:transform .12s ease, background .2s ease, border-color .2s ease;
+      white-space:nowrap;
+    }
+    .btn:hover{transform:translateY(-1px); background:rgba(29,185,84,.22); border-color:rgba(29,185,84,.55)}
+    .sp-icon{width:18px; height:18px; display:block}
+    .skeleton{
+      background:linear-gradient(90deg, rgba(255,255,255,.06), rgba(255,255,255,.12), rgba(255,255,255,.06));
+      background-size:200% 100%; animation:shimmer 1.2s infinite linear;
+    }
+    @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    @media (max-width:480px){
+      .cover-wrap{width:72px; height:72px}
+      .title{font-size:.98rem}
+      .btn{padding:8px 10px; font-size:.9rem}
+    }
+  </style>
+</head>
+<body>
+  <div class="card" role="status" aria-live="polite">
+    <div class="media">
+      <div class="cover-wrap">
+        <img id="cover" class="cover skeleton" alt="Albüm kapağı" loading="lazy" />
+        <div id="pulse" class="pulseRing" aria-hidden="true"></div>
+      </div>
+      <div class="meta">
+        <div class="status">
+          <span id="dot" class="dot"></span>
+          <span id="state" class="state">Bağlanıyor…</span>
+        </div>
+        <div id="title" class="title">—</div>
+        <div id="artist" class="artist">—</div>
+      </div>
+    </div>
+    <div class="actions">
+      <a id="spotifyLink" class="btn" href="#" target="_blank" rel="noopener">
+        <svg class="sp-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 0a12 12 0 1 0 .001 24.001A12 12 0 0 0 12 0Zm5.512 17.357a.75.75 0 0 1-1.034.246c-2.833-1.732-6.404-2.125-10.607-1.17a.75.75 0 1 1-.332-1.462c4.58-1.04 8.5-.6 11.603 1.296a.75.75 0 0 1 .37 1.09Zm1.367-3.037a.9.9 0 0 1-1.24.292c-3.247-1.997-8.2-2.58-12.037-1.416a.9.9 0 1 1-.52-1.722c4.281-1.29 9.73-.64 13.43 1.574a.9.9 0 0 1 .367 1.272Zm.124-3.224c-3.883-2.303-10.356-2.515-14.065-1.39a1.05 1.05 0 1 1-.603-2.008c4.213-1.266 11.35-1.01 15.77 1.625a1.05 1.05 0 0 1-1.102 1.773Z"></path>
+        </svg>
+        Spotify’da Aç
+      </a>
+    </div>
+  </div>
+
+  <script>
+    const ENDPOINT = '/api/proxy';
+    const REFRESH_MS = 1000;
+
+    const els = {
+      cover: document.getElementById('cover'),
+      pulse: document.getElementById('pulse'),
+      dot: document.getElementById('dot'),
+      state: document.getElementById('state'),
+      title: document.getElementById('title'),
+      artist: document.getElementById('artist'),
+      link: document.getElementById('spotifyLink')
+    };
+
+    let timer = null;
+    let lastPayload = '';
+
+    function cleanTrackParts(str){
+      if(!str || typeof str !== 'string') return {title:'—', artists:'—'};
+      const parts = str.split(' by ');
+      let title = (parts[0] || '').trim();
+      let artists = (parts[1] || '').trim();
+      if(artists.endsWith('.')) artists = artists.slice(0, -1);
+      if(!title) title = '—';
+      if(!artists) artists = '—';
+      return {title, artists};
+    }
+
+    async function fetchNowPlaying(){
+      try{
+        const r = await fetch(ENDPOINT, {cache:'no-store'});
+        if(!r.ok) throw new Error('HTTP ' + r.status);
+        const data = await r.json();
+
+        // Avoid unnecessary DOM updates
+        const payload = JSON.stringify(data);
+        if(payload === lastPayload) return;
+        lastPayload = payload;
+
+        const {current_track, album_cover, spotify_link, currently_playing} = data;
+
+        const parts = cleanTrackParts(current_track);
+        els.title.textContent = parts.title;
+        els.artist.textContent = parts.artists;
+
+        els.state.textContent = currently_playing ? 'Şu an çalıyor' : 'Duraklatıldı';
+        els.dot.classList.toggle('playing', !!currently_playing);
+        els.pulse.style.borderColor = currently_playing ? 'rgba(29,185,84,.35)' : 'rgba(255,255,255,.08)';
+
+        if (album_cover) {
+          const img = new Image();
+          img.onload = () => {
+            els.cover.src = album_cover;
+            els.cover.classList.add('loaded');
+            els.cover.classList.remove('skeleton');
+          };
+          img.src = album_cover;
+        }
+
+        if (spotify_link) {
+          els.link.href = spotify_link;
+          els.link.style.visibility = 'visible';
+        } else {
+          els.link.removeAttribute('href');
+          els.link.style.visibility = 'hidden';
+        }
+
+      } catch(e){
+        els.state.textContent = 'Bağlantı hatası';
+        els.dot.classList.remove('playing');
+        els.pulse.style.borderColor = 'rgba(255,255,255,.08)';
+      }
+    }
+
+    function start(){
+      fetchNowPlaying();
+      timer = setInterval(fetchNowPlaying, REFRESH_MS);
+      // Sayfa görünürlüğü yönetimi (isteğe bağlı)
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && !timer) {
+          timer = setInterval(fetchNowPlaying, REFRESH_MS);
+          fetchNowPlaying();
+        } else if (document.visibilityState !== 'visible' && timer) {
+          clearInterval(timer); timer = null;
+        }
+      });
+    }
+
+    start();
+  </script>
+</body>
+</html>
