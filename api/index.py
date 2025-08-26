@@ -18,6 +18,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import sessionmaker, relationship, declarative_base, Session
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
 
 # --- .ENV LOADING ---
 load_dotenv()
@@ -97,7 +98,6 @@ class User(Base):
     display_name = Column(String)
     profile_pic_url = Column(String, nullable=True)
     token = relationship("Token", uselist=False, back_populates="user")
-    active_share = relationship("ActiveShare", uselist=False, back_populates="user")
 
 class Token(Base):
     __tablename__ = "tokens"
@@ -108,17 +108,7 @@ class Token(Base):
     expires_at = Column(DateTime)
     user = relationship("User", back_populates="token")
 
-class ActiveShare(Base):
-    __tablename__ = "active_shares"
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), unique=True)
-    expires_at = Column(DateTime)
-    user = relationship("User", back_populates="active_share")
-
 # --- PYDANTIC SCHEMAS ---
-class ShareRequest(BaseModel):
-    spotify_id: str
-
 class TrackFeedItem(BaseModel):
     user_id: str
     display_name: str
@@ -152,31 +142,11 @@ def crud_create_or_update_token(db: Session, user_id: int, access_token: str, re
     db.refresh(db_token)
     return db_token
 
-def crud_start_sharing(db: Session, user_id: int):
-    # Ensure no existing share for the user
-    db.query(ActiveShare).filter(ActiveShare.user_id == user_id).delete()
-    db.commit()
-    expires_at = datetime.datetime.utcnow() + datetime.timedelta(hours=24)
-    db_active_share = ActiveShare(user_id=user_id, expires_at=expires_at)
-    db.add(db_active_share)
-    db.commit()
-    db.refresh(db_active_share)
-    return db_active_share
-
-def crud_stop_sharing(db: Session, user_id: int):
-    db.query(ActiveShare).filter(ActiveShare.user_id == user_id).delete()
-    db.commit()
-
-def crud_get_active_shares(db: Session):
-    return db.query(ActiveShare).filter(ActiveShare.expires_at > datetime.datetime.utcnow()).all()
-
-from fastapi.middleware.cors import CORSMiddleware
-
 # --- FASTAPI APP ---
 app = FastAPI()
 
 origins = [
-    "https://sptrckforwebsimy.on.websim.com",
+    "https://websim.com",
     "http://localhost",
     "http://localhost:3000",
 ]
@@ -215,7 +185,6 @@ def auth_callback(code: str, db: Session = Depends(get_db)):
         refresh_token=token_data["refresh_token"], expires_at=token_data["expires_at"]
     )
 
-    # Redirect back to the frontend with user info
     frontend_url = "https://websim.com/@ysr/profile/"
     params = {
         "spotify_id": user.spotify_id,
@@ -223,76 +192,61 @@ def auth_callback(code: str, db: Session = Depends(get_db)):
     }
     return RedirectResponse(f"{frontend_url}?{urlencode(params)}")
 
-@app.post("/api/share/start")
-def share_start(share_request: ShareRequest, db: Session = Depends(get_db)):
-    user = crud_get_user_by_spotify_id(db, spotify_id=share_request.spotify_id)
+@app.get("/api/now-playing/{spotify_id}", response_model=TrackFeedItem)
+def now_playing(spotify_id: str, db: Session = Depends(get_db)):
+    user = crud_get_user_by_spotify_id(db, spotify_id=spotify_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
-    crud_start_sharing(db=db, user_id=user.id)
-    return {"message": "Sharing started."}
 
-@app.post("/api/share/stop")
-def share_stop(share_request: ShareRequest, db: Session = Depends(get_db)):
-    user = crud_get_user_by_spotify_id(db, spotify_id=share_request.spotify_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
-    crud_stop_sharing(db=db, user_id=user.id)
-    return {"message": "Sharing stopped."}
+    token = user.token
+    if not token:
+        raise HTTPException(status_code=404, detail="Token not found for user.")
 
-@app.get("/api/feed", response_model=list[TrackFeedItem])
-def feed(db: Session = Depends(get_db)):
-    feed_items = []
-    active_shares = crud_get_active_shares(db)
-    for share in active_shares:
-        user = share.user
-        token = user.token
-        if not token:
-            continue
-
-        # Refresh token if it's expired
-        if token.expires_at < datetime.datetime.utcnow():
-            try:
-                new_token_data = spotify_refresh_access_token(token.refresh_token)
-                token = crud_create_or_update_token(
-                    db, user.id, new_token_data["access_token"],
-                    token.refresh_token, new_token_data["expires_at"]
-                )
-            except Exception:
-                crud_stop_sharing(db, user.id)
-                continue
-
-        # Fetch currently playing track
-        currently_playing = spotify_get_currently_playing(token.access_token)
-        if currently_playing and currently_playing.get("is_playing"):
-            item = currently_playing.get("item", {})
-            if not item: continue
-
-            track_name = item.get("name")
-            artist_name = ", ".join(artist.get("name") for artist in item.get("artists", []))
-            album_cover_url = item.get("album", {}).get("images", [{}])[0].get("url")
-            spotify_track_url = item.get("external_urls", {}).get("spotify")
-
-            feed_items.append(
-                TrackFeedItem(
-                    user_id=user.spotify_id,
-                    display_name=user.display_name,
-                    spotify_profile_pic=user.profile_pic_url,
-                    current_track=f"{track_name} by {artist_name}",
-                    album_cover=album_cover_url,
-                    spotify_link=spotify_track_url,
-                    currently_playing=True,
-                )
+    # Refresh token if it's expired
+    if token.expires_at < datetime.datetime.utcnow():
+        try:
+            new_token_data = spotify_refresh_access_token(token.refresh_token)
+            token = crud_create_or_update_token(
+                db, user.id, new_token_data["access_token"],
+                token.refresh_token, new_token_data["expires_at"]
             )
-        else:
-            feed_items.append(
-                TrackFeedItem(
-                    user_id=user.spotify_id,
-                    display_name=user.display_name,
-                    spotify_profile_pic=user.profile_pic_url,
-                    current_track="Not currently playing",
-                    album_cover="",
-                    spotify_link="",
-                    currently_playing=False,
-                )
+        except Exception:
+            # If refresh fails, we can't get data.
+            raise HTTPException(status_code=503, detail="Could not refresh Spotify token.")
+
+    # Fetch currently playing track
+    currently_playing = spotify_get_currently_playing(token.access_token)
+    if currently_playing and currently_playing.get("is_playing"):
+        item = currently_playing.get("item", {})
+        if not item:
+            # This can happen for podcasts etc.
+            return TrackFeedItem(
+                user_id=user.spotify_id, display_name=user.display_name,
+                spotify_profile_pic=user.profile_pic_url, current_track="Playing something not exposed by API",
+                album_cover="", spotify_link="", currently_playing=True
             )
-    return feed_items
+
+        track_name = item.get("name")
+        artist_name = ", ".join(artist.get("name") for artist in item.get("artists", []))
+        album_cover_url = item.get("album", {}).get("images", [{}])[0].get("url")
+        spotify_track_url = item.get("external_urls", {}).get("spotify")
+
+        return TrackFeedItem(
+            user_id=user.spotify_id,
+            display_name=user.display_name,
+            spotify_profile_pic=user.profile_pic_url,
+            current_track=f"{track_name} by {artist_name}",
+            album_cover=album_cover_url,
+            spotify_link=spotify_track_url,
+            currently_playing=True,
+        )
+    else:
+        return TrackFeedItem(
+            user_id=user.spotify_id,
+            display_name=user.display_name,
+            spotify_profile_pic=user.profile_pic_url,
+            current_track="Not currently listening",
+            album_cover="",
+            spotify_link="",
+            currently_playing=False,
+        )
