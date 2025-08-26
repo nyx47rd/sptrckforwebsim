@@ -81,38 +81,6 @@ app.add_middleware(
 def handle_root():
     return {"message": "Personal Now Listening API"}
 
-from fastapi import Response
-import json
-
-@app.get("/api/proxy")
-def proxy(response: Response):
-    # This endpoint acts as a proxy to the main now-playing endpoint.
-    # This is useful for providing a stable, cache-controlled endpoint for an iframe.
-
-    # Vercel automatically provides this environment variable
-    base_url = os.getenv("VERCEL_URL", "http://localhost:3000")
-    if not base_url.startswith("http"):
-        base_url = "https://" + base_url
-
-    upstream_url = f"{base_url}/api/now-playing"
-
-    try:
-        r = requests.get(upstream_url, timeout=6)
-        r.raise_for_status()
-        data = r.json()
-    except requests.exceptions.RequestException as e:
-        raise HTTPException(status_code=503, detail=f"Upstream fetch error: {e}")
-
-    # Set headers from the user's PHP script for cache control
-    response.headers["Content-Type"] = "application/json; charset=utf-8"
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-
-    return data
-
-
 @app.get("/api/now-playing", response_model=NowPlayingResponse)
 def now_playing():
     if not all([SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, MY_SPOTIFY_REFRESH_TOKEN]):
