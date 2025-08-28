@@ -74,24 +74,13 @@
     }
     .meta{min-width:0; flex:1;}
     .state{font-size:.8rem; color:var(--muted);}
-    .title, .artist {
-      overflow: hidden;
-      white-space: nowrap;
-    }
-    .title > div, .artist > div {
-      display: inline-block;
-      padding-left: 100%;
-      animation: marquee 10s linear infinite;
-    }
-    @keyframes marquee {
-      0% { transform: translateX(0); }
-      100% { transform: translateX(-100%); }
-    }
     .title{
       font-weight:600; font-size:1rem; line-height:1.25;
+      overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
     }
     .artist{
       color:var(--muted); font-size:.9rem;
+      overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
     }
     .actions{display:flex; align-items:center; gap:10px;}
     .btn{
@@ -123,12 +112,8 @@
             <span id="dot" class="dot"></span>
             <span id="state" class="state">Connecting…</span>
           </div>
-          <div id="title-container" class="title">
-            <div id="title-text">—</div>
-          </div>
-          <div id="artist-container" class="artist">
-            <div id="artist-text">—</div>
-          </div>
+          <div id="title" class="title">—</div>
+          <div id="artist" class="artist">—</div>
         </div>
       </div>
       <div class="actions">
@@ -150,10 +135,8 @@
       pulse: document.getElementById('pulse'),
       dot: document.getElementById('dot'),
       state: document.getElementById('state'),
-      title: document.getElementById('title-text'),
-      artist: document.getElementById('artist-text'),
-      titleContainer: document.getElementById('title-container'),
-      artistContainer: document.getElementById('artist-container'),
+      title: document.getElementById('title'),
+      artist: document.getElementById('artist'),
       link: document.getElementById('cardLink')
     };
 
