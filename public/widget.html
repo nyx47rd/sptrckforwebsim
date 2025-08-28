@@ -32,22 +32,22 @@
     a{text-decoration:none; color:inherit;}
     .card{
       width:100%;
-      max-width:680px;
-      min-height:144px;
+      max-width:450px;
+      min-height:120px;
       background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)) , var(--card);
       border:1px solid var(--border);
       box-shadow: 0 10px 30px var(--shadow), inset 0 1px 0 rgba(255,255,255,.04);
-      border-radius:16px;
-      padding:14px;
+      border-radius:12px;
+      padding:12px;
       display:flex;
-      gap:14px;
+      gap:12px;
       align-items:center;
       backdrop-filter:saturate(120%) blur(6px);
     }
-    .media{display:flex; align-items:center; gap:14px; flex:1; min-width:0;}
+    .media{display:flex; align-items:center; gap:12px; flex:1; min-width:0;}
     .cover-wrap{
-      position:relative; width:84px; height:84px; flex:0 0 auto;
-      border-radius:12px; overflow:hidden; background:#131820; border:1px solid var(--border);
+      position:relative; width:72px; height:72px; flex:0 0 auto;
+      border-radius:10px; overflow:hidden; background:#131820; border:1px solid var(--border);
       box-shadow: 0 6px 16px var(--shadow);
     }
     .cover{
@@ -74,14 +74,27 @@
       100%{box-shadow:0 0 0 0 rgba(29,185,84,0)}
     }
     .meta{min-width:0; flex:1;}
-    .state{font-size:.85rem; color:var(--muted);}
+    .state{font-size:.8rem; color:var(--muted);}
+    .title, .artist {
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .title > div, .artist > div {
+      display: inline-block;
+    }
+    .title.is-overflowing > div, .artist.is-overflowing > div {
+      padding-left: 100%;
+      animation: marquee 10s linear infinite;
+    }
+    @keyframes marquee {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-100%); }
+    }
     .title{
-      font-weight:600; font-size:1.02rem; line-height:1.25;
-      overflow:hidden;
+      font-weight:600; font-size:1rem; line-height:1.25;
     }
     .artist{
-      color:var(--muted); font-size:.95rem;
-      overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+      color:var(--muted); font-size:.9rem;
     }
     .actions{display:flex; align-items:center; gap:10px;}
     .btn{
@@ -99,9 +112,10 @@
     }
     @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
     @media (max-width:480px){
-      .cover-wrap{width:72px; height:72px}
-      .title{font-size:.98rem}
-      .btn{padding:8px 10px; font-size:.9rem}
+      .cover-wrap{width:64px; height:64px}
+      .title{font-size:.9rem}
+      .artist{font-size:.85rem}
+      .btn{padding:8px 10px; font-size:.85rem}
     }
   </style>
 </head>
@@ -118,8 +132,12 @@
             <span id="dot" class="dot"></span>
             <span id="state" class="state">Connecting…</span>
           </div>
-          <div id="title" class="title">—</div>
-          <div id="artist" class="artist">—</div>
+          <div id="title-container" class="title">
+            <div id="title-text">—</div>
+          </div>
+          <div id="artist-container" class="artist">
+            <div id="artist-text">—</div>
+          </div>
         </div>
       </div>
       <div class="actions">
@@ -141,8 +159,10 @@
       pulse: document.getElementById('pulse'),
       dot: document.getElementById('dot'),
       state: document.getElementById('state'),
-      title: document.getElementById('title'),
-      artist: document.getElementById('artist'),
+      title: document.getElementById('title-text'),
+      artist: document.getElementById('artist-text'),
+      titleContainer: document.getElementById('title-container'),
+      artistContainer: document.getElementById('artist-container'),
       link: document.getElementById('cardLink')
     };
 
@@ -176,6 +196,19 @@
         const parts = cleanTrackParts(current_track);
         els.title.textContent = parts.title;
         els.artist.textContent = parts.artists;
+
+        requestAnimationFrame(() => {
+          if (els.title.scrollWidth > els.titleContainer.clientWidth) {
+            els.titleContainer.classList.add('is-overflowing');
+          } else {
+            els.titleContainer.classList.remove('is-overflowing');
+          }
+          if (els.artist.scrollWidth > els.artistContainer.clientWidth) {
+            els.artistContainer.classList.add('is-overflowing');
+          } else {
+            els.artistContainer.classList.remove('is-overflowing');
+          }
+        });
 
         els.state.textContent = currently_playing ? 'Now playing' : 'Paused';
         els.dot.classList.toggle('playing', !!currently_playing);
