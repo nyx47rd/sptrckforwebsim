@@ -169,8 +169,20 @@
         const {current_track, album_cover, spotify_link, currently_playing} = data;
 
         const parts = cleanTrackParts(current_track);
-        els.title.textContent = parts.title;
-        els.artist.textContent = parts.artists;
+
+        const TITLE_CHAR_LIMIT = 16;
+        let displayTitle = parts.title;
+        if (displayTitle.length > TITLE_CHAR_LIMIT) {
+            displayTitle = displayTitle.substring(0, TITLE_CHAR_LIMIT) + '...';
+        }
+        els.title.textContent = displayTitle;
+
+        let displayArtists = parts.artists;
+        const artistList = parts.artists.split(',');
+        if (artistList.length > 2) {
+            displayArtists = artistList.slice(0, 2).join(', ') + '...';
+        }
+        els.artist.textContent = displayArtists;
 
 
         els.state.textContent = currently_playing ? 'Now playing' : 'Paused';
