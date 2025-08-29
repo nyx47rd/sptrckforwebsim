@@ -59,6 +59,8 @@ class NowPlayingResponse(BaseModel):
     album_cover: str | None
     spotify_link: str | None
     currently_playing: bool
+    progress_ms: int | None
+    duration_ms: int | None
 
 # --- FASTAPI APP ---
 app = FastAPI()
@@ -101,19 +103,24 @@ def now_playing():
             if not item:
                 return NowPlayingResponse(
                     current_track="Playing something not exposed by API",
-                    album_cover=None, spotify_link=None, currently_playing=True
+                    album_cover=None, spotify_link=None, currently_playing=True,
+                    progress_ms=None, duration_ms=None
                 )
 
             track_name = item.get("name", "Unknown Track")
             artist_name = ", ".join(artist.get("name") for artist in item.get("artists", []))
             album_cover_url = item.get("album", {}).get("images", [{}])[0].get("url")
             spotify_track_url = item.get("external_urls", {}).get("spotify")
+            progress_ms = currently_playing_data.get("progress_ms")
+            duration_ms = item.get("duration_ms")
 
             return NowPlayingResponse(
                 current_track=f"{track_name} by {artist_name}",
                 album_cover=album_cover_url,
                 spotify_link=spotify_track_url,
                 currently_playing=True,
+                progress_ms=progress_ms,
+                duration_ms=duration_ms,
             )
         else:
             return NowPlayingResponse(
@@ -121,6 +128,8 @@ def now_playing():
                 album_cover=None,
                 spotify_link=None,
                 currently_playing=False,
+                progress_ms=None,
+                duration_ms=None,
             )
     except requests.exceptions.HTTPError as e:
         # This can happen if the refresh token is revoked by the user

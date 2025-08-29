@@ -115,6 +115,7 @@
           </div>
           <div id="title" class="title">—</div>
           <div id="artist" class="artist">—</div>
+          <div id="progress" class="artist">—</div>
         </div>
       </div>
       <div class="actions">
@@ -138,11 +139,21 @@
       state: document.getElementById('state'),
       title: document.getElementById('title'),
       artist: document.getElementById('artist'),
-      link: document.getElementById('cardLink')
+      link: document.getElementById('cardLink'),
+      progress: document.getElementById('progress')
     };
 
     let timer = null;
+    let progressTimer = null;
     let lastPayload = '';
+
+    function formatTime(ms) {
+        if (!ms) return '0:00';
+        const seconds = Math.floor(ms / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
 
     function cleanTrackParts(str){
       if(!str || typeof str !== 'string') return {title:'—', artists:'—'};
@@ -166,7 +177,25 @@
         if(payload === lastPayload) return;
         lastPayload = payload;
 
-        const {current_track, album_cover, spotify_link, currently_playing} = data;
+        const {current_track, album_cover, spotify_link, currently_playing, progress_ms, duration_ms} = data;
+
+        if (progressTimer) clearInterval(progressTimer);
+
+        if (currently_playing && progress_ms && duration_ms) {
+            let currentProgress = progress_ms;
+            els.progress.textContent = `${formatTime(currentProgress)} / ${formatTime(duration_ms)}`;
+
+            progressTimer = setInterval(() => {
+                currentProgress += 1000;
+                if (currentProgress > duration_ms) {
+                    currentProgress = duration_ms;
+                    clearInterval(progressTimer);
+                }
+                els.progress.textContent = `${formatTime(currentProgress)} / ${formatTime(duration_ms)}`;
+            }, 1000);
+        } else {
+            els.progress.textContent = '—';
+        }
 
         const parts = cleanTrackParts(current_track);
 
