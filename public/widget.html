@@ -214,19 +214,20 @@
 
         els.title.textContent = parts.title;
 
-        document.fonts.ready.then(() => {
+        setTimeout(() => {
           requestAnimationFrame(() => {
             const container = els.titleContainer;
             const text = els.title;
             if (text.scrollWidth > container.clientWidth) {
               container.classList.add('is-scrolling');
-              const scrollAmount = text.scrollWidth - container.clientWidth;
+              // Add a small buffer (e.g., 5px) to ensure it scrolls past the very last character
+              const scrollAmount = text.scrollWidth - container.clientWidth + 5;
               container.style.setProperty('--scroll-amount', `-${scrollAmount}px`);
             } else {
               container.classList.remove('is-scrolling');
             }
           });
-        });
+        }, 100); // A 100ms delay to ensure rendering is complete
 
         let displayArtists = parts.artists;
         const artistList = parts.artists.split(',');
