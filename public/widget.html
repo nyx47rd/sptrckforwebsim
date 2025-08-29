@@ -31,8 +31,7 @@
     }
     a{text-decoration:none; color:inherit;}
     .card{
-      width:100%;
-      max-width:400px;
+      width:400px;
       min-height:120px;
       background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)) , var(--card);
       border:1px solid var(--border);
@@ -77,7 +76,14 @@
     .state{font-size:.8rem; color:var(--muted);}
     .title{
       font-weight:600; font-size:1rem; line-height:1.25;
-      overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+      overflow:hidden; white-space:nowrap; text-overflow:clip;
+    }
+    .title.is-scrolling > div {
+        animation: scroll-and-wait 10s infinite;
+    }
+    @keyframes scroll-and-wait {
+        0%, 20% { transform: translateX(0); }
+        80%, 100% { transform: translateX(var(--scroll-amount, 0)); }
     }
     .artist{
       color:var(--muted); font-size:.9rem;
@@ -113,7 +119,9 @@
             <span id="dot" class="dot"></span>
             <span id="state" class="state">Connecting…</span>
           </div>
-          <div id="title" class="title">—</div>
+          <div id="title-container" class="title">
+            <div id="title-text">—</div>
+          </div>
           <div id="artist" class="artist">—</div>
         </div>
       </div>
@@ -136,7 +144,8 @@
       pulse: document.getElementById('pulse'),
       dot: document.getElementById('dot'),
       state: document.getElementById('state'),
-      title: document.getElementById('title'),
+      title: document.getElementById('title-text'),
+      titleContainer: document.getElementById('title-container'),
       artist: document.getElementById('artist'),
       link: document.getElementById('cardLink')
     };
@@ -170,12 +179,19 @@
 
         const parts = cleanTrackParts(current_track);
 
-        const TITLE_CHAR_LIMIT = 16;
-        let displayTitle = parts.title;
-        if (displayTitle.length > TITLE_CHAR_LIMIT) {
-            displayTitle = displayTitle.substring(0, TITLE_CHAR_LIMIT) + '...';
-        }
-        els.title.textContent = displayTitle;
+        els.title.textContent = parts.title;
+
+        requestAnimationFrame(() => {
+          const container = els.titleContainer;
+          const text = els.title;
+          if (text.scrollWidth > container.clientWidth) {
+            container.classList.add('is-scrolling');
+            const scrollAmount = text.scrollWidth - container.clientWidth;
+            container.style.setProperty('--scroll-amount', `-${scrollAmount}px`);
+          } else {
+            container.classList.remove('is-scrolling');
+          }
+        });
 
         let displayArtists = parts.artists;
         const artistList = parts.artists.split(',');
