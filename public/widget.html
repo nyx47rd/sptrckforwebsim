@@ -31,7 +31,7 @@
     }
     a{text-decoration:none; color:inherit;}
     .card{
-      width:400px;
+      width:320px;
       min-height:120px;
       background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01)) , var(--card);
       border:1px solid var(--border);
@@ -78,7 +78,8 @@
       font-weight:600; font-size:1rem; line-height:1.25;
       overflow:hidden; white-space:nowrap; text-overflow:clip;
     }
-    .title.is-scrolling > div {
+    .title.is-scrolling > span {
+        display: inline-block; /* Ensure span has stable dimensions */
         animation: scroll-and-wait 10s infinite;
     }
     @keyframes scroll-and-wait {
@@ -120,7 +121,7 @@
             <span id="state" class="state">Connecting…</span>
           </div>
           <div id="title-container" class="title">
-            <div id="title-text">—</div>
+            <span id="title-text">—</span>
           </div>
           <div id="artist" class="artist">—</div>
           <div id="progress" class="artist">—</div>
@@ -210,16 +211,18 @@
 
         els.title.textContent = parts.title;
 
-        requestAnimationFrame(() => {
-          const container = els.titleContainer;
-          const text = els.title;
-          if (text.scrollWidth > container.clientWidth) {
-            container.classList.add('is-scrolling');
-            const scrollAmount = text.scrollWidth - container.clientWidth;
-            container.style.setProperty('--scroll-amount', `-${scrollAmount}px`);
-          } else {
-            container.classList.remove('is-scrolling');
-          }
+        document.fonts.ready.then(() => {
+          requestAnimationFrame(() => {
+            const container = els.titleContainer;
+            const text = els.title;
+            if (text.scrollWidth > container.clientWidth) {
+              container.classList.add('is-scrolling');
+              const scrollAmount = text.scrollWidth - container.clientWidth;
+              container.style.setProperty('--scroll-amount', `-${scrollAmount}px`);
+            } else {
+              container.classList.remove('is-scrolling');
+            }
+          });
         });
 
         let displayArtists = parts.artists;
