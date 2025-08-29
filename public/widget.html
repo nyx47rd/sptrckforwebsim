@@ -212,22 +212,9 @@
 
         const parts = cleanTrackParts(current_track);
 
+        // Reset title scroll state on new song
+        els.titleContainer.classList.remove('is-scrolling');
         els.title.textContent = parts.title;
-
-        setTimeout(() => {
-          requestAnimationFrame(() => {
-            const container = els.titleContainer;
-            const text = els.title;
-            if (text.scrollWidth > container.clientWidth) {
-              container.classList.add('is-scrolling');
-              // Add a small buffer (e.g., 5px) to ensure it scrolls past the very last character
-              const scrollAmount = text.scrollWidth - container.clientWidth + 5;
-              container.style.setProperty('--scroll-amount', `-${scrollAmount}px`);
-            } else {
-              container.classList.remove('is-scrolling');
-            }
-          });
-        }, 100); // A 100ms delay to ensure rendering is complete
 
         let displayArtists = parts.artists;
         const artistList = parts.artists.split(',');
@@ -268,6 +255,26 @@
     function start(){
       fetchNowPlaying();
       timer = setInterval(fetchNowPlaying, REFRESH_MS);
+
+      els.titleContainer.addEventListener('click', (event) => {
+        const container = els.titleContainer;
+        const text = els.title;
+        // Check for overflow only when clicked
+        if (text.scrollWidth > container.clientWidth) {
+          // If it's overflowing, we want to animate.
+          // Prevent the parent link from being followed.
+          event.preventDefault();
+          // Toggle the scrolling class
+          container.classList.toggle('is-scrolling');
+          // Set the scroll amount variable if we are starting the animation
+          if (container.classList.contains('is-scrolling')) {
+            const scrollAmount = text.scrollWidth - container.clientWidth + 5;
+            container.style.setProperty('--scroll-amount', `-${scrollAmount}px`);
+          }
+        }
+        // If it's not overflowing, do nothing and let the link be followed normally.
+      });
+
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible' && !timer) {
           timer = setInterval(fetchNowPlaying, REFRESH_MS);
