@@ -78,13 +78,17 @@
       font-weight:600; font-size:1rem; line-height:1.25;
       overflow:hidden; white-space:nowrap; text-overflow:clip;
     }
+    #title-text {
+      display: inline-block;
+      will-change: transform;
+    }
     .title.is-scrolling > span {
-        display: inline-block;
         animation: scroll-and-wait 10s infinite;
     }
     @keyframes scroll-and-wait {
-        0%, 20% { transform: translateX(0); }
-        80%, 100% { transform: translateX(var(--scroll-amount, 0)); }
+        0%, 20%   { transform: translateX(0); }
+        40%, 60%  { transform: translateX(var(--scroll-amount, 0)); }
+        80%, 100% { transform: translateX(0); }
     }
     .artist{
       color:var(--muted); font-size:.9rem;
