@@ -21,13 +21,26 @@ MY_SPOTIFY_REFRESH_TOKEN = os.getenv("MY_SPOTIFY_REFRESH_TOKEN")
 SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
 SPOTIFY_API_BASE_URL = "https://api.spotify.com/v1"
 
+# --- IN-MEMORY CACHE ---
+cached_access_token = None
+token_expiry_time = None
+cached_spotify_data = None
+data_cache_time = None
+
 # --- SPOTIFY HELPER FUNCTIONS ---
 
 def spotify_refresh_access_token():
     """
-    Refreshes the access token using the long-lived refresh token.
-    This is the only token function we need now.
+    Refreshes the access token using the long-lived refresh token,
+    or returns a cached token if it's still valid.
     """
+    global cached_access_token, token_expiry_time
+
+    # If we have a token and it's not expired, use it.
+    if cached_access_token and token_expiry_time and datetime.datetime.utcnow() < token_expiry_time:
+        return cached_access_token
+
+    # If the token is expired or doesn't exist, get a new one.
     if not MY_SPOTIFY_REFRESH_TOKEN:
         raise ValueError("MY_SPOTIFY_REFRESH_TOKEN is not set in environment.")
 
@@ -38,7 +51,16 @@ def spotify_refresh_access_token():
         data={"grant_type": "refresh_token", "refresh_token": MY_SPOTIFY_REFRESH_TOKEN},
     )
     response.raise_for_status()
-    return response.json()["access_token"]
+
+    token_data = response.json()
+    access_token = token_data["access_token"]
+    expires_in = token_data.get("expires_in", 3600)  # Default to 1 hour
+
+    # Cache the new token and its expiry time
+    cached_access_token = access_token
+    token_expiry_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=expires_in - 60) # Refresh 1 min before expiry
+
+    return access_token
 
 def spotify_get_currently_playing(access_token: str):
     """
@@ -85,6 +107,14 @@ def handle_root():
 
 @app.get("/api/now-playing", response_model=NowPlayingResponse)
 def now_playing():
+    global cached_spotify_data, data_cache_time
+
+    # --- CACHE CHECK ---
+    # Check if we have fresh data in cache
+    CACHE_DURATION = datetime.timedelta(seconds=15)
+    if cached_spotify_data and data_cache_time and (datetime.datetime.utcnow() - data_cache_time) < CACHE_DURATION:
+        return cached_spotify_data
+
     if not all([SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, MY_SPOTIFY_REFRESH_TOKEN]):
         raise HTTPException(
             status_code=500,
@@ -92,38 +122,35 @@ def now_playing():
         )
 
     try:
-        # Get a fresh access token on every request for simplicity and statelessness
         access_token = spotify_refresh_access_token()
-
-        # Fetch currently playing track
         currently_playing_data = spotify_get_currently_playing(access_token)
 
         if currently_playing_data and currently_playing_data.get("is_playing"):
             item = currently_playing_data.get("item", {})
             if not item:
-                return NowPlayingResponse(
+                response_data = NowPlayingResponse(
                     current_track="Playing something not exposed by API",
                     album_cover=None, spotify_link=None, currently_playing=True,
                     progress_ms=None, duration_ms=None
                 )
+            else:
+                track_name = item.get("name", "Unknown Track")
+                artist_name = ", ".join(artist.get("name") for artist in item.get("artists", []))
+                album_cover_url = item.get("album", {}).get("images", [{}])[0].get("url")
+                spotify_track_url = item.get("external_urls", {}).get("spotify")
+                progress_ms = currently_playing_data.get("progress_ms")
+                duration_ms = item.get("duration_ms")
 
-            track_name = item.get("name", "Unknown Track")
-            artist_name = ", ".join(artist.get("name") for artist in item.get("artists", []))
-            album_cover_url = item.get("album", {}).get("images", [{}])[0].get("url")
-            spotify_track_url = item.get("external_urls", {}).get("spotify")
-            progress_ms = currently_playing_data.get("progress_ms")
-            duration_ms = item.get("duration_ms")
-
-            return NowPlayingResponse(
-                current_track=f"{track_name} by {artist_name}",
-                album_cover=album_cover_url,
-                spotify_link=spotify_track_url,
-                currently_playing=True,
-                progress_ms=progress_ms,
-                duration_ms=duration_ms,
-            )
+                response_data = NowPlayingResponse(
+                    current_track=f"{track_name} by {artist_name}",
+                    album_cover=album_cover_url,
+                    spotify_link=spotify_track_url,
+                    currently_playing=True,
+                    progress_ms=progress_ms,
+                    duration_ms=duration_ms,
+                )
         else:
-            return NowPlayingResponse(
+            response_data = NowPlayingResponse(
                 current_track="Not currently listening",
                 album_cover=None,
                 spotify_link=None,
@@ -131,6 +158,12 @@ def now_playing():
                 progress_ms=None,
                 duration_ms=None,
             )
+
+        # Cache the new data
+        cached_spotify_data = response_data
+        data_cache_time = datetime.datetime.utcnow()
+
+        return response_data
     except requests.exceptions.HTTPError as e:
         # This can happen if the refresh token is revoked by the user
         raise HTTPException(
