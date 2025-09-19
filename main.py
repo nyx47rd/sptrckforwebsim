@@ -1,4 +1,5 @@
 import os
+import time
 from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -59,6 +60,9 @@ def update_playing_task(x_cron_secret: str = Header(None), db: Session = Depends
         else:
             track_data = { "track_name": "Not currently playing", "artist_name": "", "album_cover_url": "", "spotify_track_url": "", "currently_playing": False }
         crud.create_or_update_track(db, user.id, track_data)
+
+        # Add a delay to avoid hitting the rate limit when updating many users
+        time.sleep(0.5)
 
     return {"message": "Track update task completed."}
 
