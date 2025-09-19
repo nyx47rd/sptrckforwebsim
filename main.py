@@ -96,7 +96,7 @@ def auth_callback(code: str, db: Session = Depends(get_db)):
         expires_at=token_data["expires_at"],
     )
 
-    return {"message": "Successfully authenticated.", "refresh_token": token_data["refresh_token"]}
+    return {"message": "Successfully authenticated."}
 
 @app.post("/share/start")
 def share_start(share_request: models.ShareRequest, db: Session = Depends(get_db)):
