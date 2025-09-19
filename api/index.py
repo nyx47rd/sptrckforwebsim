@@ -59,6 +59,8 @@ class NowPlayingResponse(BaseModel):
     album_cover: str | None
     spotify_link: str | None
     currently_playing: bool
+    progress_ms: int | None
+    duration_ms: int | None
 
 # --- FASTAPI APP ---
 app = FastAPI()
