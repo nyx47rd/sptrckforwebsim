@@ -1,9 +1,11 @@
 {
   "builds": [
+    { "src": "public/widget.html", "use": "@vercel/static" },
     { "src": "api/index.py", "use": "@vercel/python" },
     { "src": "main.py", "use": "@vercel/python" }
   ],
   "routes": [
+    { "src": "/widget.html", "dest": "/public/widget.html" },
     { "src": "/api/now-playing", "dest": "/api/index.py" },
     { "src": "/auth/:path*", "dest": "/main.py" },
     { "src": "/tasks/:path*", "dest": "/main.py" },
