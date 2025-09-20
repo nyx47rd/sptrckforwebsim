@@ -3,17 +3,14 @@
     { "src": "api/index.py", "use": "@vercel/python" },
     { "src": "main.py", "use": "@vercel/python" }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "handle": "filesystem"
+      "source": "/api/now-playing",
+      "destination": "/api/index"
     },
     {
-      "src": "/api/now-playing",
-      "dest": "/api/index"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/main"
+      "source": "/(.*)",
+      "destination": "/main"
     }
   ]
 }
