@@ -9,7 +9,23 @@
       "destination": "/api/index"
     },
     {
-      "source": "/(.*)",
+      "source": "/auth/:path*",
+      "destination": "/main"
+    },
+    {
+      "source": "/tasks/:path*",
+      "destination": "/main"
+    },
+    {
+      "source": "/share/:path*",
+      "destination": "/main"
+    },
+    {
+      "source": "/feed",
+      "destination": "/main"
+    },
+    {
+      "source": "/",
       "destination": "/main"
     }
   ]
