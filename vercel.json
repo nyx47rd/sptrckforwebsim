@@ -9,11 +9,11 @@
     },
     {
       "src": "/api/now-playing",
-      "dest": "api/index.py"
+      "dest": "/api/index"
     },
     {
       "src": "/(.*)",
-      "dest": "main.py"
+      "dest": "/main"
     }
   ]
 }
