@@ -1,9 +1,7 @@
 import os
 import datetime
 import base64
-from urllib.parse import urlencode
 import requests
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -82,6 +80,7 @@ class NowPlayingResponse(BaseModel):
 # --- FASTAPI APP ---
 app = FastAPI()
 
+# Configure CORS
 origins = [
     "https://websim.com",
     "http://localhost",
