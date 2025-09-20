@@ -3,30 +3,12 @@
     { "src": "api/index.py", "use": "@vercel/python" },
     { "src": "main.py", "use": "@vercel/python" }
   ],
-  "rewrites": [
-    {
-      "source": "/api/now-playing",
-      "destination": "/api/index"
-    },
-    {
-      "source": "/auth/:path*",
-      "destination": "/main"
-    },
-    {
-      "source": "/tasks/:path*",
-      "destination": "/main"
-    },
-    {
-      "source": "/share/:path*",
-      "destination": "/main"
-    },
-    {
-      "source": "/feed",
-      "destination": "/main"
-    },
-    {
-      "source": "/",
-      "destination": "/main"
-    }
+  "routes": [
+    { "src": "/api/now-playing", "dest": "/api/index.py" },
+    { "src": "/auth/:path*", "dest": "/main.py" },
+    { "src": "/tasks/:path*", "dest": "/main.py" },
+    { "src": "/share/:path*", "dest": "/main.py" },
+    { "src": "/feed", "dest": "/main.py" },
+    { "src": "/", "dest": "/main.py" }
   ]
 }
