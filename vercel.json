@@ -1,13 +1,31 @@
 {
   "builds": [
-    {
-      "src": "main.py",
-      "use": "@vercel/python"
-    }
+    { "src": "api/index.py", "use": "@vercel/python" },
+    { "src": "main.py", "use": "@vercel/python" }
   ],
   "routes": [
     {
-      "src": "/(.*)",
+      "src": "/api/now-playing",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/",
+      "dest": "main.py"
+    },
+    {
+      "src": "/auth/(.*)",
+      "dest": "main.py"
+    },
+    {
+      "src": "/tasks/(.*)",
+      "dest": "main.py"
+    },
+    {
+      "src": "/share/(.*)",
+      "dest": "main.py"
+    },
+    {
+      "src": "/feed",
       "dest": "main.py"
     }
   ]
