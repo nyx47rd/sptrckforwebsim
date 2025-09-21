@@ -48,7 +48,62 @@ Follow these steps to run this project on your own Vercel account.
 2.  **Create a New Project:** Go to "Add New... -> Project", and select the repository you forked on GitHub.
 3.  **Create a Database:** On the project page, go to the "Storage" tab and create a new database with the "Postgres" option. After the database is created, you will be given a **`DATABASE_URL`**. Copy this URL.
 
-### Step 4: Configure Environment Variables
+### Step 4: Create the Database Schema
+
+Before running the application, you need to create the necessary tables in your database.
+
+1.  Connect to your Neon (or other PostgreSQL) database.
+2.  Go to the **SQL Editor**.
+3.  Copy the entire SQL code below and run it. This will create all the tables the application needs.
+
+```sql
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    spotify_id VARCHAR NOT NULL,
+    display_name VARCHAR,
+    profile_pic_url VARCHAR,
+    UNIQUE (spotify_id)
+);
+
+CREATE INDEX ix_users_id ON users (id);
+CREATE INDEX ix_users_spotify_id ON users (spotify_id);
+
+CREATE TABLE tokens (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    access_token VARCHAR NOT NULL,
+    refresh_token VARCHAR NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES users (id)
+);
+
+CREATE INDEX ix_tokens_id ON tokens (id);
+
+CREATE TABLE tracks (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    track_name VARCHAR,
+    artist_name VARCHAR,
+    album_cover_url VARCHAR,
+    spotify_track_url VARCHAR,
+    currently_playing BOOLEAN DEFAULT false,
+    FOREIGN KEY(user_id) REFERENCES users (id)
+);
+
+CREATE INDEX ix_tracks_id ON tracks (id);
+
+CREATE TABLE active_shares (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    expires_at TIMESTAMP,
+    UNIQUE (user_id),
+    FOREIGN KEY(user_id) REFERENCES users (id)
+);
+
+CREATE INDEX ix_active_shares_id ON active_shares (id);
+```
+
+### Step 5: Configure Environment Variables
 
 In your Vercel project's settings ("Settings" -> "Environment Variables"), create the following variables one by one and enter their values:
 
@@ -63,30 +118,27 @@ In your Vercel project's settings ("Settings" -> "Environment Variables"), creat
 
 ### Step 5: Generate Your Personal Refresh Token
 
-To get the personal "Now Playing" widget (`/api/now-playing`) working, you need to obtain a `refresh_token` for your own Spotify account. This script simplifies the process.
+To get the personal "Now Playing" widget (`/api/now-playing`) working, you need to obtain a `refresh_token` for your own Spotify account. You can get this directly from the application's authentication flow.
 
-1.  **Add a new Redirect URI to your Spotify App:**
-    -   Go to your [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/) and select your app.
-    -   Click "Edit Settings".
-    -   Add `https://example.com/callback` to your list of Redirect URIs and save.
+1.  **Deploy the Application:** Make sure your application is successfully deployed on Vercel with all the necessary environment variables from Step 4 (except `MY_SPOTIFY_REFRESH_TOKEN`, which you are about to get).
 
-2.  **Prepare your local environment:**
-    -   Make sure you have cloned the project and installed dependencies (`pip install -r requirements.txt`).
-    -   Create a `.env` file in the project's root directory.
-    -   Fill in `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` from your dashboard. The script does not require any other variables.
+2.  **Log In Through Your Deployed App:**
+    -   Go to your live application's login page: `https://your-project.vercel.app/auth/login`.
+    -   Click the "Login with Spotify" button.
+    -   Log in with your **personal** Spotify account that you want to display on the widget.
+    -   Grant the necessary permissions.
 
-3.  **Run the script:**
-    -   Run the following command in your terminal:
-        ```bash
-        python generate_token.py
-        ```
-    -   The script will give you a URL. Open it, log in, and grant permissions.
-    -   You will be redirected to an `example.com` page that doesn't exist. This is expected. Copy the full URL from your browser's address bar.
-    -   Paste the URL back into your terminal when prompted.
+3.  **Copy Your Refresh Token:**
+    -   After you grant permissions, you will be redirected to a page that displays a JSON response.
+    -   This response contains your tokens. Find the `refresh_token` field and copy its value (it will be a long string).
 
 4.  **Set the Environment Variable:**
-    -   The script will print your `Refresh Token`. Copy this value.
-    -   Go to your Vercel project settings and set the `MY_SPOTIFY_REFRESH_TOKEN` environment variable to the value you just copied.
+    -   Go back to your Vercel project settings ("Settings" -> "Environment Variables").
+    -   Create a new environment variable named `MY_SPOTIFY_REFRESH_TOKEN`.
+    -   Paste the `refresh_token` you copied as the value.
+    -   Save the variable. Vercel will trigger a new deployment with this new variable.
+
+After the new deployment is complete, your `/api/now-playing` widget will be active.
 
 ### Step 6: Deploy the Project
 
