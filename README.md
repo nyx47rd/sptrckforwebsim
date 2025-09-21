@@ -24,7 +24,7 @@ Follow these steps to run this project on your own Vercel account.
 
 ### Step 1: Fork & Clone the Project
 
-1.  **Fork** this GitHub repository to your own account.
+1.  **Fork** or **Use this template > Create a new repository** this GitHub repository to your own account.
 2.  Clone your forked repository to your local machine:
     ```bash
     git clone https://github.com/YOUR_USERNAME/YOUR_PROJECT_NAME.git
