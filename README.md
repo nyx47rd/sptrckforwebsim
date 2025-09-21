@@ -1,166 +1,122 @@
-# Spotify Track Sharer & Now Playing Widget
+# Spotify Track Sharer with Admin Controls
 
-This project is a web application that allows users to share the song they are currently listening to on Spotify with their friends, and an API that provides a personal "Now Playing" widget. It is built with FastAPI and designed for deployment on Vercel.
+This project is a multi-user web application that allows users to share their currently playing Spotify track. It includes a private admin panel for the site owner to manage settings, such as the public visibility of the feed.
 
 ## ✨ Features
 
--   **Multi-User Sharing:** Users can log in with their Spotify accounts and share the song they are currently listening to on a public feed.
--   **Personal "Now Playing" Widget:** The `/api/now-playing` endpoint provides a data output showing the song you are currently listening to, which you can embed on your own website or profile.
--   **Automatic Updates:** A background task (cron job) periodically updates the currently playing tracks for all active users.
--   **Easy Deployment:** Designed for easy deployment with Vercel and a cloud database provider (e.g., Vercel Postgres).
+-   **Multi-User Platform:** Any user can log in with their Spotify account to start sharing their "Now Playing" status.
+-   **Admin Panel:** The first user to sign up automatically becomes the admin, able to access a private admin panel.
+-   **Public Feed Control:** The admin can enable or disable the public visibility of the shared tracks feed.
+-   **Personal "Now Playing" Widget:** A separate, single-user API endpoint is available for the owner to embed their own "Now Playing" status on a personal website.
+-   **Scalable Background Updates:** A robust, batch-processing cron job updates user statuses without timing out in a serverless environment.
+-   **Easy Deployment:** Designed for Vercel with a PostgreSQL database.
 
 ## 🛠️ Tech Stack
 
 -   **Backend:** [FastAPI](https://fastapi.tiangolo.com/)
--   **Database:** [SQLAlchemy](https://www.sqlalchemy.org/) ORM with PostgreSQL (production) and SQLite (local development).
+-   **Database:** [SQLAlchemy](https://www.sqlalchemy.org/) ORM with PostgreSQL.
 -   **Deployment:** [Vercel](https://vercel.com/)
--   **Spotify Integration:** [Spotify Web API](https://developer.spotify.com/documentation/web-api)
 
 ---
 
 ## 🚀 Setup and Deployment Guide
 
-Follow these steps to run this project on your own Vercel account.
+### Step 1: Fork & Clone
+Fork this repository and clone it to your local machine.
 
-### Step 1: Fork & Clone the Project
-
-1.  **Fork** this GitHub repository to your own account.
-2.  Clone your forked repository to your local machine:
-    ```bash
-    git clone https://github.com/YOUR_USERNAME/YOUR_PROJECT_NAME.git
-    cd YOUR_PROJECT_NAME
-    ```
-
-### Step 2: Create a Spotify Developer Application
-
-1.  Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/) and log in.
-2.  Click the **"Create App"** button to create a new application.
-3.  After creating your app, take note of the **"Client ID"** and **"Client Secret"**. You can view the secret by clicking "Show client secret".
-4.  Click the **"Edit Settings"** button.
-5.  In the **"Redirect URIs"** section, add the URL of your Vercel application followed by the `/auth/callback` path. For example:
-    -   `https://your-project.vercel.app/auth/callback`
-    -   For local development: `http://127.0.0.1:8000/auth/callback`
-6.  Save the settings.
+### Step 2: Create a Spotify Developer App
+1.  Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/) and create a new app.
+2.  Note your **Client ID** and **Client Secret**.
+3.  Click "Edit Settings" and add your deployment's callback URL to the "Redirect URIs".
+    -   Example for production: `https://your-project.vercel.app/auth/callback`
 
 ### Step 3: Create a Vercel Project and Database
-
-1.  **Log in to Vercel:** Log in to your [Vercel](https://vercel.com/) account.
-2.  **Create a New Project:** Go to "Add New... -> Project", and select the repository you forked on GitHub.
-3.  **Create a Database:** On the project page, go to the "Storage" tab and create a new database with the "Postgres" option. After the database is created, you will be given a **`DATABASE_URL`**. Copy this URL.
+1.  Create a new Vercel project and link your forked GitHub repository.
+2.  Go to the "Storage" tab and create a new **Postgres** database.
+3.  Copy the **`DATABASE_URL`** connection string.
 
 ### Step 4: Create the Database Schema
-
-Before running the application, you need to create the necessary tables in your database.
-
-1.  Connect to your Neon (or other PostgreSQL) database.
-2.  Go to the **SQL Editor**.
-3.  Copy the entire SQL code below and run it. This will create all the tables the application needs.
-
+1.  In your Neon (or other PostgreSQL provider) dashboard, find the **SQL Editor**.
+2.  Copy and run the entire SQL script below to create the necessary tables.
 ```sql
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    spotify_id VARCHAR NOT NULL,
+    spotify_id VARCHAR NOT NULL UNIQUE,
     display_name VARCHAR,
     profile_pic_url VARCHAR,
-    UNIQUE (spotify_id)
+    is_admin BOOLEAN NOT NULL DEFAULT FALSE
 );
-
-CREATE INDEX ix_users_id ON users (id);
 CREATE INDEX ix_users_spotify_id ON users (spotify_id);
 
 CREATE TABLE tokens (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES users(id),
     access_token VARCHAR NOT NULL,
     refresh_token VARCHAR NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    FOREIGN KEY(user_id) REFERENCES users (id)
+    expires_at TIMESTAMP NOT NULL
 );
-
-CREATE INDEX ix_tokens_id ON tokens (id);
 
 CREATE TABLE tracks (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id),
     track_name VARCHAR,
     artist_name VARCHAR,
     album_cover_url VARCHAR,
     spotify_track_url VARCHAR,
-    currently_playing BOOLEAN DEFAULT false,
-    FOREIGN KEY(user_id) REFERENCES users (id)
+    currently_playing BOOLEAN DEFAULT FALSE
 );
-
-CREATE INDEX ix_tracks_id ON tracks (id);
 
 CREATE TABLE active_shares (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL,
-    expires_at TIMESTAMP,
-    UNIQUE (user_id),
-    FOREIGN KEY(user_id) REFERENCES users (id)
+    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id),
+    expires_at TIMESTAMP
 );
 
-CREATE INDEX ix_active_shares_id ON active_shares (id);
+CREATE TABLE settings (
+    key VARCHAR PRIMARY KEY,
+    value VARCHAR
+);
+CREATE INDEX ix_settings_key ON settings (key);
+
+-- Add a default setting for the feed's public visibility
+INSERT INTO settings (key, value) VALUES ('feed_is_public', 'true');
 ```
 
 ### Step 5: Configure Environment Variables
+In your Vercel project's "Settings" -> "Environment Variables", add the following:
 
-In your Vercel project's settings ("Settings" -> "Environment Variables"), create the following variables one by one and enter their values:
+| Variable Name              | Description                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------ |
+| `SPOTIFY_CLIENT_ID`        | From your Spotify App.                                                         |
+| `SPOTIFY_CLIENT_SECRET`    | From your Spotify App.                                                         |
+| `SPOTIFY_REDIRECT_URI`     | The full callback URL for your Vercel deployment.                              |
+| `DATABASE_URL`             | The connection URL for your Postgres database.                                 |
+| `MY_SPOTIFY_REFRESH_TOKEN` | Your personal refresh token for the widget. (Get this in the next step).         |
+| `CRON_SECRET`              | A long, random string to secure the cron job endpoint.                         |
+| `ADMIN_PASSWORD`           | A password you choose for the admin panel.                                     |
 
-| Variable Name              | Description                                                                                                                  | Example Value                                |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| `SPOTIFY_CLIENT_ID`        | The Client ID from your Spotify Developer Dashboard.                                                                         | `xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`           |
-| `SPOTIFY_CLIENT_SECRET`    | The Client Secret from your Spotify Developer Dashboard.                                                                     | `xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`           |
-| `SPOTIFY_REDIRECT_URI`     | The Redirect URI you added to your Spotify settings.                                                                         | `https://your-project.vercel.app/auth/callback` |
-| `DATABASE_URL`             | The PostgreSQL connection URL from Vercel or another provider.                                                               | `postgres://...`                             |
-| `MY_SPOTIFY_REFRESH_TOKEN` | Your personal Spotify refresh token to be used for the "Now Playing" widget. (You will obtain this in the next step).         | `AQ...`                                      |
-| `CRON_SECRET`              | A secret key to trigger the scheduled task. Use a complex, unpredictable string.                                             | `a-very-secure-and-random-key-for-cron`      |
 
-### Step 5: Generate Your Personal Refresh Token
-
-To get the personal "Now Playing" widget (`/api/now-playing`) working, you need to obtain a `refresh_token` for your own Spotify account. You can get this directly from the application's authentication flow.
-
-1.  **Deploy the Application:** Make sure your application is successfully deployed on Vercel with all the necessary environment variables from Step 4 (except `MY_SPOTIFY_REFRESH_TOKEN`, which you are about to get).
-
-2.  **Log In Through Your Deployed App:**
-    -   Go to your live application's login page: `https://your-project.vercel.app/auth/login`.
-    -   Click the "Login with Spotify" button.
-    -   Log in with your **personal** Spotify account that you want to display on the widget.
-    -   Grant the necessary permissions.
-
-3.  **Copy Your Refresh Token:**
-    -   After you grant permissions, you will be redirected to a page that displays a JSON response.
-    -   This response contains your tokens. Find the `refresh_token` field and copy its value (it will be a long string).
-
-4.  **Set the Environment Variable:**
-    -   Go back to your Vercel project settings ("Settings" -> "Environment Variables").
-    -   Create a new environment variable named `MY_SPOTIFY_REFRESH_TOKEN`.
-    -   Paste the `refresh_token` you copied as the value.
-    -   Save the variable. Vercel will trigger a new deployment with this new variable.
-
-After the new deployment is complete, your `/api/now-playing` widget will be active.
-
-### Step 6: Deploy the Project
-
-Vercel will automatically deploy any changes to your repository's `main` branch. After setting the environment variables, you can trigger a new deployment from the Vercel dashboard.
+### Step 6: Deploy and Become Admin
+1.  Push your code to GitHub to trigger a Vercel deployment.
+2.  Once deployed, go to `https://your-project.vercel.app/auth/login`.
+3.  **Log in with your own Spotify account.** As the first user to sign up, you will automatically be made the admin.
+4.  The page will show you an `access_token` and `refresh_token`.
+5.  Copy the `refresh_token` and set it as the `MY_SPOTIFY_REFRESH_TOKEN` environment variable in Vercel. This will activate your personal widget.
+6.  Keep the `access_token` handy to use the admin panel.
 
 ---
 
+## 🔒 Admin Panel
+
+-   **Access:** Go to `https://your-project.vercel.app/admin.html`.
+-   **Authentication:** Paste the `access_token` you received after logging in to access the settings.
+-   **Features:** You can toggle the public visibility of the `/feed` endpoint.
+
 ## 💻 Usage
 
--   **Login:** Go to `https://your-project.vercel.app/auth/login` to see the login page. Clicking the button will start the authorization flow.
--   **Start/Stop Sharing:** API endpoints (`/share/start`, `/share/stop`) are available for this feature. You can build a UI to interact with them.
--   **Personal Widget:** Get your own currently playing data from `https://your-project.vercel.app/api/now-playing`.
+-   **Login:** `https://your-project.vercel.app/auth/login`
+-   **Personal Widget API:** `https://your-project.vercel.app/api/now-playing`
+-   **Public Feed:** `https://your-project.vercel.app/feed` (if enabled in admin panel)
 
 ## 🕒 Setting up the Cron Job
-
-The `/tasks/update-playing` endpoint needs to be called periodically to keep all users' track data fresh. This can be configured using the **Cron Jobs** tab in your Vercel project's dashboard.
-
-1.  Go to the **Cron Jobs** tab in your Vercel project.
-2.  Create a new cron job with the following settings:
-    -   **Schedule:** Choose how often you want the job to run (e.g., `*/2 * * * *` for every 2 minutes).
-    -   **URL to hit:** Enter the full URL for your tasks endpoint: `https://your-project.vercel.app/tasks/update-playing`.
-    -   **HTTP Method:** `POST`.
-    -   **Headers:** You must add a custom header for security. The key should be `x-cron-secret` and the value should be the `CRON_SECRET` you set in your environment variables.
-
-This will trigger the batch update process periodically.
+Use the **Cron Jobs** tab in your Vercel project dashboard to periodically call the `POST https://your-project.vercel.app/tasks/update-playing` endpoint. Remember to add the `x-cron-secret` header with the value you set. A schedule of `*/2 * * * *` (every 2 minutes) is a good starting point.
