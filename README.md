@@ -4,7 +4,7 @@ This project is a web application that allows users to share the song they are c
 
 ## ✨ Features
 
--   **Multi-User Sharing:** Users can log in with their Spotify accounts and share the song they are currently listening to on a public feed.
+-   **Multi-User Sharing:** Users can log in and share with others what they are currently listening to.
 -   **Personal "Now Playing" Widget:** The `/api/now-playing` endpoint provides a data output showing the song you are currently listening to, which you can embed on your own website or profile.
 -   **Automatic Updates:** A background task (cron job) periodically updates the currently playing tracks for all active users.
 -   **Easy Deployment:** Designed for easy deployment with Vercel and a cloud database provider (e.g., Vercel Postgres).
