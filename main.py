@@ -44,30 +44,57 @@ def auth_spotify_redirect():
 def auth_callback(code: str, db: Session = Depends(get_db)):
     """
     Callback endpoint for Spotify's OAuth flow.
-    Exchanges the code for tokens and creates/updates the user.
+    Exchanges the authorization code for tokens, saves user data, and returns the tokens.
+    Includes detailed error handling to diagnose issues during the process.
     """
+    # Step 1: Exchange authorization code for tokens
     try:
         token_data = spotify.get_token_data_from_code(code)
+        if "access_token" not in token_data or "refresh_token" not in token_data:
+            raise HTTPException(status_code=500, detail="Failed to retrieve valid tokens from Spotify.")
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Could not retrieve token from Spotify.") from e
+        raise HTTPException(status_code=502, detail=f"Error communicating with Spotify for token exchange: {e}")
 
-    user_profile = spotify.get_user_profile(token_data["access_token"])
-    user = crud.get_user_by_spotify_id(db, spotify_id=user_profile["id"])
-    if not user:
-        user = crud.create_user(
+    # Step 2: Get user profile from Spotify
+    try:
+        user_profile = spotify.get_user_profile(token_data["access_token"])
+        if "id" not in user_profile:
+            raise HTTPException(status_code=500, detail="Failed to retrieve user profile from Spotify.")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Error communicating with Spotify for profile fetch: {e}")
+
+    # Step 3: Get or create user in our database
+    try:
+        user = crud.get_user_by_spotify_id(db, spotify_id=user_profile["id"])
+        if not user:
+            user = crud.create_user(
+                db=db,
+                spotify_id=user_profile["id"],
+                display_name=user_profile.get("display_name", "N/A"),
+                profile_pic_url=user_profile.get("images", [{}])[0].get("url") if user_profile.get("images") else None,
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error when getting or creating user: {e}")
+
+    # Step 4: Save the tokens to our database
+    try:
+        crud.create_or_update_token(
             db=db,
-            spotify_id=user_profile["id"],
-            display_name=user_profile["display_name"],
-            profile_pic_url=user_profile["images"][0]["url"] if user_profile.get("images") else None,
+            user_id=user.id,
+            access_token=token_data["access_token"],
+            refresh_token=token_data["refresh_token"],
+            expires_at=token_data["expires_at"],
         )
-    crud.create_or_update_token(
-        db=db,
-        user_id=user.id,
-        access_token=token_data["access_token"],
-        refresh_token=token_data["refresh_token"],
-        expires_at=token_data["expires_at"],
-    )
-    return {"message": "Successfully authenticated. You can now close this page."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error when saving tokens: {e}")
+
+    # Step 5: Return the tokens to the user
+    return {
+        "message": "SUCCESS: Tokens retrieved. Copy the refresh_token and add it to your Vercel Environment Variables as MY_SPOTIFY_REFRESH_TOKEN.",
+        "access_token": token_data["access_token"],
+        "refresh_token": token_data["refresh_token"],
+        "spotify_user_id": user_profile["id"],
+    }
 
 # --- Background Task ---
 

@@ -63,30 +63,27 @@ In your Vercel project's settings ("Settings" -> "Environment Variables"), creat
 
 ### Step 5: Generate Your Personal Refresh Token
 
-To get the personal "Now Playing" widget (`/api/now-playing`) working, you need to obtain a `refresh_token` for your own Spotify account. This script simplifies the process.
+To get the personal "Now Playing" widget (`/api/now-playing`) working, you need to obtain a `refresh_token` for your own Spotify account. You can get this directly from the application's authentication flow.
 
-1.  **Add a new Redirect URI to your Spotify App:**
-    -   Go to your [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/) and select your app.
-    -   Click "Edit Settings".
-    -   Add `https://example.com/callback` to your list of Redirect URIs and save.
+1.  **Deploy the Application:** Make sure your application is successfully deployed on Vercel with all the necessary environment variables from Step 4 (except `MY_SPOTIFY_REFRESH_TOKEN`, which you are about to get).
 
-2.  **Prepare your local environment:**
-    -   Make sure you have cloned the project and installed dependencies (`pip install -r requirements.txt`).
-    -   Create a `.env` file in the project's root directory.
-    -   Fill in `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` from your dashboard. The script does not require any other variables.
+2.  **Log In Through Your Deployed App:**
+    -   Go to your live application's login page: `https://your-project.vercel.app/auth/login`.
+    -   Click the "Login with Spotify" button.
+    -   Log in with your **personal** Spotify account that you want to display on the widget.
+    -   Grant the necessary permissions.
 
-3.  **Run the script:**
-    -   Run the following command in your terminal:
-        ```bash
-        python generate_token.py
-        ```
-    -   The script will give you a URL. Open it, log in, and grant permissions.
-    -   You will be redirected to an `example.com` page that doesn't exist. This is expected. Copy the full URL from your browser's address bar.
-    -   Paste the URL back into your terminal when prompted.
+3.  **Copy Your Refresh Token:**
+    -   After you grant permissions, you will be redirected to a page that displays a JSON response.
+    -   This response contains your tokens. Find the `refresh_token` field and copy its value (it will be a long string).
 
 4.  **Set the Environment Variable:**
-    -   The script will print your `Refresh Token`. Copy this value.
-    -   Go to your Vercel project settings and set the `MY_SPOTIFY_REFRESH_TOKEN` environment variable to the value you just copied.
+    -   Go back to your Vercel project settings ("Settings" -> "Environment Variables").
+    -   Create a new environment variable named `MY_SPOTIFY_REFRESH_TOKEN`.
+    -   Paste the `refresh_token` you copied as the value.
+    -   Save the variable. Vercel will trigger a new deployment with this new variable.
+
+After the new deployment is complete, your `/api/now-playing` widget will be active.
 
 ### Step 6: Deploy the Project
 
