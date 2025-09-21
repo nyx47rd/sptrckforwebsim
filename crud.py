@@ -83,22 +83,3 @@ def stop_sharing(db: Session, user_id: int):
 def get_active_shares(db: Session):
     return db.query(models.ActiveShare).filter(models.ActiveShare.expires_at > datetime.datetime.utcnow()).all()
 
-def get_feed(db: Session):
-    feed_items = []
-    active_shares = get_active_shares(db)
-    for share in active_shares:
-        user = share.user
-        track = user.track
-        if track:
-            feed_items.append(
-                models.TrackFeedItem(
-                    user_id=user.spotify_id,
-                    display_name=user.display_name,
-                    spotify_profile_pic=user.profile_pic_url,
-                    current_track=f"{track.track_name} by {track.artist_name}",
-                    album_cover=track.album_cover_url,
-                    spotify_link=track.spotify_track_url,
-                    currently_playing=track.currently_playing,
-                )
-            )
-    return feed_items

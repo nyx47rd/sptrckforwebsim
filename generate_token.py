@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 try:
     import spotify
 except ImportError:
-    print("Hata: `spotify.py` dosyası bulunamadı. Script'in ana proje dizininde olduğundan emin olun.")
+    print("Error: `spotify.py` not found. Make sure this script is in the main project directory.")
     sys.exit(1)
 
 def main():
@@ -24,23 +24,23 @@ def main():
     redirect_uri = os.getenv("SPOTIFY_REDIRECT_URI")
 
     if not client_id or not redirect_uri:
-        print("Hata: Lütfen .env dosyanızda SPOTIFY_CLIENT_ID ve SPOTIFY_REDIRECT_URI değişkenlerini ayarlayın.")
+        print("Error: Please set the SPOTIFY_CLIENT_ID and SPOTIFY_REDIRECT_URI variables in your .env file.")
         return
 
     # 1. Get authorization URL
     auth_url = spotify.get_auth_url()
 
     print("-" * 60)
-    print("Spotify Refresh Token Oluşturucu")
+    print("Spotify Refresh Token Generator")
     print("-" * 60)
-    print("\n1. Adım: Aşağıdaki URL'yi kopyalayıp tarayıcınızda açın:")
+    print("\nStep 1: Copy the following URL and open it in your browser:")
     print("\n" + auth_url + "\n")
-    print("2. Adım: Spotify'a giriş yapın ve uygulamaya izin verin.")
-    print("3. Adım: İzin verdikten sonra tarayıcınız 'sayfa bulunamadı' gibi bir hata verebilir, bu normaldir.")
-    print("   Tarayıcının adres çubuğundaki URL'nin tamamını kopyalayın.")
+    print("Step 2: Log in to Spotify and grant permission to the application.")
+    print("Step 3: After authorizing, your browser will redirect to a page that might show a 'not found' error. This is normal.")
+    print("   Copy the entire URL from your browser's address bar.")
 
     # 2. Get the redirected URL from user
-    callback_url = input("\n4. Adım: Kopyaladığınız URL'yi buraya yapıştırın ve Enter'a basın:\n> ")
+    callback_url = input("\nStep 4: Paste the full redirected URL here and press Enter:\n> ")
 
     # 3. Parse the authorization code from the URL
     try:
@@ -49,38 +49,38 @@ def main():
         auth_code = query_params.get("code", [None])[0]
 
         if not auth_code:
-            print("\nHata: URL içinde 'code' parametresi bulunamadı. Lütfen doğru URL'yi kopyaladığınızdan emin olun.")
+            print("\nError: Could not find 'code' parameter in the URL. Please make sure you copied the correct URL.")
             return
 
     except Exception:
-        print("\nHata: Geçersiz bir URL girdiniz.")
+        print("\nError: You entered an invalid URL.")
         return
 
     # 4. Exchange the code for tokens
-    print("\nYetkilendirme kodu alınıyor, token'lar için Spotify'a istek gönderiliyor...")
+    print("\nAuthorization code received, requesting tokens from Spotify...")
     try:
         token_data = spotify.get_token_data_from_code(auth_code)
         access_token = token_data.get("access_token")
         refresh_token = token_data.get("refresh_token")
 
         if not refresh_token:
-            print("\nHata: Spotify'dan refresh_token alınamadı. Yetkilerde bir sorun olabilir.")
-            print("Gelen yanıt:", token_data)
+            print("\nError: Could not retrieve refresh_token from Spotify. There might be an issue with permissions.")
+            print("Response from Spotify:", token_data)
             return
 
         print("\n" + "=" * 60)
-        print("BAŞARILI!")
-        print("Aşağıdaki Refresh Token'ı kopyalayıp .env dosyanızdaki")
-        print("MY_SPOTIFY_REFRESH_TOKEN değişkenine yapıştırın.")
+        print("SUCCESS!")
+        print("Copy the Refresh Token below and paste it into your .env file")
+        print("for the MY_SPOTIFY_REFRESH_TOKEN variable.")
         print("-" * 60)
         print(f"\nRefresh Token: {refresh_token}\n")
         print("=" * 60)
 
     except requests.exceptions.HTTPError as e:
-        print(f"\nHata: Spotify'dan token alınırken bir sorun oluştu (HTTP {e.response.status_code}).")
-        print("Spotify'ın yanıtı:", e.response.json())
-        print("\nLütfen .env dosyanızdaki SPOTIFY_CLIENT_ID ve SPOTIFY_CLIENT_SECRET'ın doğru olduğundan emin olun.")
-        print("Ayrıca Spotify Developer Dashboard'daki Redirect URI'nin .env dosyanızdaki ile aynı olduğunu kontrol edin.")
+        print(f"\nError: An error occurred while fetching tokens from Spotify (HTTP {e.response.status_code}).")
+        print("Response from Spotify:", e.response.json())
+        print("\nPlease ensure your SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in the .env file are correct.")
+        print("Also, verify that the Redirect URI in your Spotify Developer Dashboard matches the one in your .env file.")
 
 if __name__ == "__main__":
     main()

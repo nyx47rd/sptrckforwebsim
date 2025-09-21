@@ -10,7 +10,6 @@
     { "src": "/auth/:path*", "dest": "/main.py" },
     { "src": "/tasks/:path*", "dest": "/main.py" },
     { "src": "/share/:path*", "dest": "/main.py" },
-    { "src": "/feed", "dest": "/main.py" },
     { "src": "/", "dest": "/main.py" }
   ]
 }
