@@ -5,9 +5,9 @@ This project is a web application that allows users to share the song they are c
 ## ✨ Features
 
 -   **Multi-User Sharing:** Users can log in and share with others what they are currently listening to.
--   **Personal "Now Playing" Widget:** The `/api/now-playing` endpoint provides a data output showing the song you are currently listening to, which you can embed on your own website or profile.
--   **Automatic Updates:** A background task (cron job) periodically updates the currently playing tracks for all active users.
--   **Easy Deployment:** Designed for easy deployment with Vercel and a cloud database provider (e.g., Vercel Postgres).
+-   **Personal "Now Playing" Widget:** Thanks to this widget, when you go to `https://your-vercel-app-name.vercel.app/public/widget.html` you will see a widget showing the currently playing song. You can embed this widget on a website if you want.
+-   **Automatic Updates:** A background task periodically updates the currently playing tracks for all active users.
+-   **Easy Deployment:** Designed for easy deployment with Vercel and a cloud database provider (e.g., Neon).
 
 ## 🛠️ Tech Stack
 
@@ -46,7 +46,7 @@ Follow these steps to run this project on your own Vercel account.
 
 1.  **Log in to Vercel:** Log in to your [Vercel](https://vercel.com/) account.
 2.  **Create a New Project:** Go to "Add New... -> Project", and select the repository you forked on GitHub.
-3.  **Create a Database:** On the project page, go to the "Storage" tab and create a new database with the "Postgres" option. After the database is created, you will be given a **`DATABASE_URL`**. Copy this URL.
+3.  **Create a Database:** On the project page, go to the "Storage" tab and create a new database with the "Postgres" option. After the database is created, you will be given a **`DATABASE_URL`**. Copy this URL. If you prefer, you can have these variables created automatically by choosing an easier provider like Neon.
 
 ### Step 4: Create the Database Schema
 
@@ -117,7 +117,7 @@ In your Vercel project's settings ("Settings" -> "Environment Variables"), creat
 
 ### Step 5: Generate Your Personal Refresh Token
 
-To get the personal "Now Playing" widget (`/api/now-playing`) working, you need to obtain a `refresh_token` for your own Spotify account. You can get this directly from the application's authentication flow.
+To get the personal "Now Playing" widget (`/public/widget.html`) working, you need to obtain a `refresh_token` for your own Spotify account. You can get this directly from the application's authentication flow.
 
 1.  **Deploy the Application:** Make sure your application is successfully deployed on Vercel with all the necessary environment variables from Step 4 (except `MY_SPOTIFY_REFRESH_TOKEN`, which you are about to get).
 
@@ -137,7 +137,7 @@ To get the personal "Now Playing" widget (`/api/now-playing`) working, you need 
     -   Paste the `refresh_token` you copied as the value.
     -   Save the variable. Vercel will trigger a new deployment with this new variable.
 
-After the new deployment is complete, your `/api/now-playing` widget will be active.
+After the new deployment is complete, your `/public/widget.html` widget will be active.
 
 ### Step 6: Deploy the Project
 
@@ -149,4 +149,4 @@ Vercel will automatically deploy any changes to your repository's `main` branch.
 
 -   **Login:** Go to `https://your-project.vercel.app/auth/login` to see the login page. Clicking the button will start the authorization flow.
 -   **Start/Stop Sharing:** API endpoints (`/share/start`, `/share/stop`) are available for this feature. You can build a UI to interact with them.
--   **Personal Widget:** Get your own currently playing data from `https://your-project.vercel.app/api/now-playing`.
+-   **Personal Widget:** Get your own currently playing data from `https://your-project.vercel.app/public/widget.html`.
