@@ -73,8 +73,7 @@ To get the personal "Now Playing" widget (`/api/now-playing`) working, you need 
 2.  **Prepare your local environment:**
     -   Make sure you have cloned the project and installed dependencies (`pip install -r requirements.txt`).
     -   Create a `.env` file in the project's root directory.
-    -   Fill in `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` from your dashboard.
-    -   Set `SPOTIFY_REDIRECT_URI` to `https://example.com/callback`.
+    -   Fill in `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` from your dashboard. The script does not require any other variables.
 
 3.  **Run the script:**
     -   Run the following command in your terminal:
