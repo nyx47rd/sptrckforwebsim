@@ -85,7 +85,7 @@ def main():
                 "code": auth_code,
                 "redirect_uri": script_redirect_uri,
             },
-        )
+        , timeout=30)
         response.raise_for_status()
         token_data = response.json()
 
