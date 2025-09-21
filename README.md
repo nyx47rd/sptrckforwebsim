@@ -48,7 +48,62 @@ Follow these steps to run this project on your own Vercel account.
 2.  **Create a New Project:** Go to "Add New... -> Project", and select the repository you forked on GitHub.
 3.  **Create a Database:** On the project page, go to the "Storage" tab and create a new database with the "Postgres" option. After the database is created, you will be given a **`DATABASE_URL`**. Copy this URL.
 
-### Step 4: Configure Environment Variables
+### Step 4: Create the Database Schema
+
+Before running the application, you need to create the necessary tables in your database.
+
+1.  Connect to your Neon (or other PostgreSQL) database.
+2.  Go to the **SQL Editor**.
+3.  Copy the entire SQL code below and run it. This will create all the tables the application needs.
+
+```sql
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    spotify_id VARCHAR NOT NULL,
+    display_name VARCHAR,
+    profile_pic_url VARCHAR,
+    UNIQUE (spotify_id)
+);
+
+CREATE INDEX ix_users_id ON users (id);
+CREATE INDEX ix_users_spotify_id ON users (spotify_id);
+
+CREATE TABLE tokens (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    access_token VARCHAR NOT NULL,
+    refresh_token VARCHAR NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES users (id)
+);
+
+CREATE INDEX ix_tokens_id ON tokens (id);
+
+CREATE TABLE tracks (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    track_name VARCHAR,
+    artist_name VARCHAR,
+    album_cover_url VARCHAR,
+    spotify_track_url VARCHAR,
+    currently_playing BOOLEAN DEFAULT false,
+    FOREIGN KEY(user_id) REFERENCES users (id)
+);
+
+CREATE INDEX ix_tracks_id ON tracks (id);
+
+CREATE TABLE active_shares (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    expires_at TIMESTAMP,
+    UNIQUE (user_id),
+    FOREIGN KEY(user_id) REFERENCES users (id)
+);
+
+CREATE INDEX ix_active_shares_id ON active_shares (id);
+```
+
+### Step 5: Configure Environment Variables
 
 In your Vercel project's settings ("Settings" -> "Environment Variables"), create the following variables one by one and enter their values:
 

@@ -18,13 +18,6 @@ CRON_SECRET = os.getenv("CRON_SECRET")
 
 app = FastAPI()
 
-@app.on_event("startup")
-def on_startup():
-    """
-    This function runs when the application starts up.
-    It creates all the necessary database tables.
-    """
-    create_db_and_tables()
 
 # --- Authentication Flow ---
 
