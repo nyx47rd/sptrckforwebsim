@@ -63,19 +63,31 @@ In your Vercel project's settings ("Settings" -> "Environment Variables"), creat
 
 ### Step 5: Generate Your Personal Refresh Token
 
-To get the personal "Now Playing" widget (`/api/now-playing`) working, you need to obtain a `refresh_token` for your own Spotify account.
+To get the personal "Now Playing" widget (`/api/now-playing`) working, you need to obtain a `refresh_token` for your own Spotify account. This script simplifies the process.
 
-1.  Make sure you have cloned the project files and installed the packages from `requirements.txt`:
-    ```bash
-    pip install -r requirements.txt
-    ```
-2.  Create a `.env` file in the project's root directory and fill in the variables from above (especially `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REDIRECT_URI`) for your local setup.
-3.  Run the following command in your terminal:
-    ```bash
-    python generate_token.py
-    ```
-4.  Follow the steps provided by the script. Go to the URL it gives you, authorize the app, and paste the final redirected URL back into the terminal.
-5.  The script will give you a `Refresh Token`. Copy this token and paste it as the value for the `MY_SPOTIFY_REFRESH_TOKEN` environment variable in Vercel.
+1.  **Add a new Redirect URI to your Spotify App:**
+    -   Go to your [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/) and select your app.
+    -   Click "Edit Settings".
+    -   Add `https://example.com/callback` to your list of Redirect URIs and save.
+
+2.  **Prepare your local environment:**
+    -   Make sure you have cloned the project and installed dependencies (`pip install -r requirements.txt`).
+    -   Create a `.env` file in the project's root directory.
+    -   Fill in `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` from your dashboard.
+    -   Set `SPOTIFY_REDIRECT_URI` to `https://example.com/callback`.
+
+3.  **Run the script:**
+    -   Run the following command in your terminal:
+        ```bash
+        python generate_token.py
+        ```
+    -   The script will give you a URL. Open it, log in, and grant permissions.
+    -   You will be redirected to an `example.com` page that doesn't exist. This is expected. Copy the full URL from your browser's address bar.
+    -   Paste the URL back into your terminal when prompted.
+
+4.  **Set the Environment Variable:**
+    -   The script will print your `Refresh Token`. Copy this value.
+    -   Go to your Vercel project settings and set the `MY_SPOTIFY_REFRESH_TOKEN` environment variable to the value you just copied.
 
 ### Step 6: Deploy the Project
 
@@ -85,25 +97,19 @@ Vercel will automatically deploy any changes to your repository's `main` branch.
 
 ## 💻 Usage
 
--   **Login:** Go to `https://your-project.vercel.app/auth/login` to log in with your Spotify account.
+-   **Login:** Go to `https://your-project.vercel.app/auth/login` to see the login page. Clicking the button will start the authorization flow.
 -   **Start/Stop Sharing:** API endpoints (`/share/start`, `/share/stop`) are available for this feature. You can build a UI to interact with them.
--   **View Feed:** Get a JSON list of all users currently sharing their tracks at `https://your-project.vercel.app/feed`.
 -   **Personal Widget:** Get your own currently playing data from `https://your-project.vercel.app/api/now-playing`.
 
 ## 🕒 Setting up the Cron Job
 
-The `/tasks/update-playing` endpoint needs to be called periodically to keep the track data fresh. You can do this with Vercel's native "Cron Jobs" feature.
+The `/tasks/update-playing` endpoint needs to be called periodically to keep all users' track data fresh. This can be configured using the **Cron Jobs** tab in your Vercel project's dashboard.
 
-1.  Add a `vercel.json` file to your project's root directory (it's already included in this repo).
-2.  Add a definition like the one below to the `crons` section:
-    ```json
-    {
-      "crons": [
-        {
-          "path": "/tasks/update-playing",
-          "schedule": "*/2 * * * *"
-        }
-      ]
-    }
-    ```
-    This example runs the task every 2 minutes. You can change the `schedule` value as you see fit. Remember that you must send the `x-cron-secret` header with the correct value when calling this endpoint. You can add custom headers in the Vercel Cron Job settings.
+1.  Go to the **Cron Jobs** tab in your Vercel project.
+2.  Create a new cron job with the following settings:
+    -   **Schedule:** Choose how often you want the job to run (e.g., `*/2 * * * *` for every 2 minutes).
+    -   **URL to hit:** Enter the full URL for your tasks endpoint: `https://your-project.vercel.app/tasks/update-playing`.
+    -   **HTTP Method:** `POST`.
+    -   **Headers:** You must add a custom header for security. The key should be `x-cron-secret` and the value should be the `CRON_SECRET` you set in your environment variables.
+
+This will trigger the batch update process periodically.
