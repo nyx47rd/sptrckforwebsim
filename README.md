@@ -112,9 +112,8 @@ In your Vercel project's settings ("Settings" -> "Environment Variables"), creat
 | `SPOTIFY_CLIENT_ID`        | The Client ID from your Spotify Developer Dashboard.                                                                         | `xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`           |
 | `SPOTIFY_CLIENT_SECRET`    | The Client Secret from your Spotify Developer Dashboard.                                                                     | `xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`           |
 | `SPOTIFY_REDIRECT_URI`     | The Redirect URI you added to your Spotify settings.                                                                         | `https://your-project.vercel.app/auth/callback` |
-| `DATABASE_URL`             | The PostgreSQL connection URL from Vercel or another provider.                                                               | `postgres://...`                             |
+| `DATABASE_URL`             | The PostgreSQL connection URL from Vercel or another provider (If you choose a provider from Vercel, this information will automatically be added to the Environment Variables section)                                                             | `postgres://...`                             |
 | `MY_SPOTIFY_REFRESH_TOKEN` | Your personal Spotify refresh token to be used for the "Now Playing" widget. (You will obtain this in the next step).         | `AQ...`                                      |
-| `CRON_SECRET`              | A secret key to trigger the scheduled task. Use a complex, unpredictable string.                                             | `a-very-secure-and-random-key-for-cron`      |
 
 ### Step 5: Generate Your Personal Refresh Token
 
