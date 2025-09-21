@@ -155,6 +155,3 @@ def share_stop(share_request: models.ShareRequest, db: Session = Depends(get_db)
     crud.stop_sharing(db=db, user_id=user.id)
     return {"message": "Sharing stopped successfully."}
 
-@app.get("/feed", response_model=list[models.TrackFeedItem])
-def feed(db: Session = Depends(get_db)):
-    return crud.get_feed(db=db)

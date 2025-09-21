@@ -49,14 +49,3 @@ class ActiveShare(Base):
 class ShareRequest(BaseModel):
     spotify_id: str
 
-class TrackFeedItem(BaseModel):
-    user_id: str
-    display_name: str
-    spotify_profile_pic: str | None
-    current_track: str
-    album_cover: str | None
-    spotify_link: str | None
-    currently_playing: bool
-
-    class Config:
-        orm_mode = True
