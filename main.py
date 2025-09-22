@@ -81,9 +81,17 @@ def auth_callback(code: str, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error when saving tokens: {e}")
 
-    # Step 5: Return the tokens to the user
+    # Step 5: Start sharing automatically
+    try:
+        crud.start_sharing(db=db, user_id=user.id)
+    except Exception as e:
+        # Even if sharing fails to start, don't block the user from getting their tokens
+        print(f"Could not start sharing for user {user.id}: {e}")
+
+
+    # Step 6: Return the tokens to the user
     return {
-        "message": "SUCCESS: Tokens retrieved. Copy the refresh_token and add it to your Vercel Environment Variables as MY_SPOTIFY_REFRESH_TOKEN.",
+        "message": "SUCCESS: Tokens retrieved and sharing started. Copy the refresh_token and add it to your Vercel Environment Variables as MY_SPOTIFY_REFRESH_TOKEN.",
         "access_token": token_data["access_token"],
         "refresh_token": token_data["refresh_token"],
         "spotify_user_id": user_profile["id"],
@@ -167,19 +175,3 @@ async def update_playing_task(
 @app.get("/", summary="API Root")
 def read_root():
     return {"message": "Spotify Track Sharer API is running."}
-
-@app.post("/share/start", status_code=200, summary="Start sharing playing status")
-def share_start(share_request: models.ShareRequest, db: Session = Depends(get_db)):
-    user = crud.get_user_by_spotify_id(db, spotify_id=share_request.spotify_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
-    crud.start_sharing(db=db, user_id=user.id)
-    return {"message": "Sharing started successfully."}
-
-@app.post("/share/stop", status_code=200, summary="Stop sharing playing status")
-def share_stop(share_request: models.ShareRequest, db: Session = Depends(get_db)):
-    user = crud.get_user_by_spotify_id(db, spotify_id=share_request.spotify_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
-    crud.stop_sharing(db=db, user_id=user.id)
-    return {"message": "Sharing stopped successfully."}
