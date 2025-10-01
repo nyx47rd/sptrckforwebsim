@@ -120,7 +120,7 @@
         <div class="meta">
           <div class="status">
             <span id="dot" class="dot"></span>
-            <span id="state" class="state">Sunucuya sinyal gönderiliyor...</span>
+            <span id="state" class="state">Bağlanılıyor...</span>
           </div>
           <div class="title">
             <span id="title-text">—</span>
@@ -140,8 +140,6 @@
   </a>
 
   <script>
-    const ENDPOINT = '/api/now-playing';
-
     const els = {
       cover: document.getElementById('cover'),
       pulse: document.getElementById('pulse'),
@@ -154,6 +152,7 @@
     };
 
     let progressTimer = null;
+    let intentionalClose = false;
 
     function formatTime(ms) {
         if (!ms) return '0:00';
@@ -228,31 +227,48 @@
     }
 
     function connect() {
-      const eventSource = new EventSource(ENDPOINT);
+      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      const ws = new WebSocket(`${proto}//${host}/api/ws`);
+      intentionalClose = false;
 
-      eventSource.onmessage = (event) => {
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+      };
+
+      ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
           if (data.error) {
-            // Handle both server misconfiguration and other unexpected errors
+            intentionalClose = true; // Set flag before closing
             els.state.textContent = data.message || 'An unknown error occurred.';
             els.dot.classList.remove('playing');
-            eventSource.close(); // Stop all reconnection attempts
+            ws.close();
             return;
           }
           updateUI(data);
         } catch (e) {
-          console.error("Failed to parse or update UI:", e);
+          console.error('Failed to parse message or update UI:', e);
           els.state.textContent = 'Data parsing error.';
+          intentionalClose = true;
+          ws.close();
         }
       };
 
-      eventSource.onerror = () => {
-        // This will trigger if the connection is lost, e.g., Vercel timeout
-        // It won't trigger for the initial misconfiguration error if the server sends a message first.
-        els.state.textContent = 'Reconnecting…';
-        eventSource.close();
-        setTimeout(connect, 5000); // Attempt to reconnect after 5 seconds
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        els.state.textContent = 'Bağlantı hatası';
+        intentionalClose = true; // Also treat WebSocket errors as intentional
+      };
+
+      ws.onclose = () => {
+        if (!intentionalClose) {
+          console.log('WebSocket disconnected. Attempting to reconnect...');
+          els.state.textContent = 'Yeniden bağlanılıyor...';
+          setTimeout(connect, 5000); // Reconnect after 5 seconds
+        } else {
+          console.log('WebSocket closed intentionally.');
+        }
       };
     }
 
