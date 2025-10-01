@@ -21,12 +21,11 @@ MY_SPOTIFY_REFRESH_TOKEN = os.getenv("MY_SPOTIFY_REFRESH_TOKEN")
 SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
 SPOTIFY_API_BASE_URL = "https://api.spotify.com/v1"
 
-# --- IN-MEMORY CACHE FOR TOKEN ---
+# --- IN-MEMORY CACHE (Not effective in serverless, but good practice for local dev) ---
 cached_access_token = None
 token_expiry_time = None
 
 # --- SPOTIFY HELPER FUNCTIONS ---
-
 def spotify_refresh_access_token():
     global cached_access_token, token_expiry_time
     if cached_access_token and token_expiry_time and datetime.datetime.utcnow() < token_expiry_time:
@@ -66,24 +65,28 @@ class NowPlayingResponse(BaseModel):
 
 # --- FASTAPI APP ---
 app = FastAPI()
-origins = ["https://websim.com", "http://localhost", "http://localhost:3000"]
+origins = ["*"]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 async def now_playing_stream_generator(request: Request):
-    try:
-        last_payload = None
-        if not all([SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, MY_SPOTIFY_REFRESH_TOKEN]):
-            error_message = {
-                "error": "server_misconfigured",
-                "message": "Server is not configured. Contact site owner."
-            }
-            yield f"data: {json.dumps(error_message)}\n\n"
-            return
+    last_payload = None
+    # Netlify's timeout is 10s for the free tier. We run for ~9s.
+    stream_duration = 9
+    start_time = datetime.datetime.now()
 
-        while True:
-            if await request.is_disconnected():
-                break
+    if not all([SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, MY_SPOTIFY_REFRESH_TOKEN]):
+        error_message = {
+            "error": "server_misconfigured",
+            "message": "Sunucu yapılandırılmamış. Site sahibiyle iletişime geçin."
+        }
+        yield f"data: {json.dumps(error_message)}\n\n"
+        return
 
+    while (datetime.datetime.now() - start_time).total_seconds() < stream_duration:
+        if await request.is_disconnected():
+            break
+
+        try:
             access_token = spotify_refresh_access_token()
             currently_playing_data = spotify_get_currently_playing(access_token)
 
@@ -91,13 +94,13 @@ async def now_playing_stream_generator(request: Request):
                 item = currently_playing_data.get("item", {})
                 if not item:
                     response_data = NowPlayingResponse(
-                        current_track="Playing something not exposed by API",
+                        current_track="API tarafından gösterilmeyen bir içerik oynatılıyor",
                         album_cover=None, spotify_link=None, currently_playing=True,
                         progress_ms=None, duration_ms=None,
                     )
                 else:
                     response_data = NowPlayingResponse(
-                        current_track=f"{item.get('name', 'Unknown Track')} by {', '.join(artist.get('name') for artist in item.get('artists', []))}",
+                        current_track=f"{item.get('name', 'Bilinmeyen Şarkı')} by {', '.join(artist.get('name') for artist in item.get('artists', []))}",
                         album_cover=item.get("album", {}).get("images", [{}])[0].get("url"),
                         spotify_link=item.get("external_urls", {}).get("spotify"),
                         currently_playing=True,
@@ -106,7 +109,7 @@ async def now_playing_stream_generator(request: Request):
                     )
             else:
                 response_data = NowPlayingResponse(
-                    current_track="Not currently listening", album_cover=None,
+                    current_track="Şu anda bir şey dinlemiyor", album_cover=None,
                     spotify_link=None, currently_playing=False,
                     progress_ms=None, duration_ms=None,
                 )
@@ -116,19 +119,13 @@ async def now_playing_stream_generator(request: Request):
                 yield f"data: {current_payload}\n\n"
                 last_payload = current_payload
 
-            await asyncio.sleep(2)
+        except Exception as e:
+            error_message = { "error": "streaming_error", "message": f"Veri akışında bir hata oluştu: {str(e)}" }
+            yield f"data: {json.dumps(error_message)}\n\n"
+            # We break the loop on error to allow the client to reconnect
+            break
 
-    except Exception as e:
-        # Broad exception handler to catch any unexpected error during the stream
-        error_message = {
-            "error": "unexpected_server_error",
-            "message": f"A critical server error occurred: {str(e)}"
-        }
-        yield f"data: {json.dumps(error_message)}\n\n"
-
-@app.get("/api")
-def handle_root():
-    return {"message": "Personal Now Listening API"}
+        await asyncio.sleep(2)
 
 @app.get("/api/now-playing")
 async def now_playing_sse(request: Request):
