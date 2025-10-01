@@ -152,6 +152,7 @@
     };
 
     let progressTimer = null;
+    let lastPayload = '';
 
     function formatTime(ms) {
         if (!ms) return '0:00';
@@ -170,6 +171,27 @@
       if(!title) title = '—';
       if(!artists) artists = '—';
       return {title, artists};
+    }
+
+    async function fetchNowPlaying() {
+      try {
+        const response = await fetch('/api/now-playing');
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+
+        const payload = JSON.stringify(data);
+        if (payload === lastPayload) return;
+        lastPayload = payload;
+
+        updateUI(data);
+      } catch (error) {
+        console.error('Fetch error:', error);
+        els.state.textContent = 'Bağlantı hatası';
+        els.dot.classList.remove('playing');
+      }
     }
 
     function updateUI(data) {
@@ -225,40 +247,12 @@
       }
     }
 
-    async function poll() {
-      try {
-        const response = await fetch('/api/now-playing', {
-          signal: AbortSignal.timeout(10000) // 10s timeout, slightly more than server
-        });
+    // Initial fetch
+    fetchNowPlaying();
 
-        if (response.status === 500) {
-            const errorData = await response.json();
-            els.state.textContent = errorData.detail || 'Sunucu hatası';
-            els.dot.classList.remove('playing');
-            // Don't poll again on server error
-            return;
-        }
+    // Poll every 10 seconds
+    setInterval(fetchNowPlaying, 10000);
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        updateUI(data);
-
-        // Immediately poll again after receiving a response
-        setTimeout(poll, 0);
-
-      } catch (error) {
-        console.error('Polling error:', error);
-        els.state.textContent = 'Bağlantı hatası';
-        els.dot.classList.remove('playing');
-        // Wait 5 seconds before retrying on network error
-        setTimeout(poll, 5000);
-      }
-    }
-
-    poll();
   </script>
 </body>
 </html>
