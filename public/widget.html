@@ -152,7 +152,6 @@
     };
 
     let progressTimer = null;
-    let intentionalClose = false;
 
     function formatTime(ms) {
         if (!ms) return '0:00';
@@ -226,53 +225,40 @@
       }
     }
 
-    function connect() {
-      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host;
-      const ws = new WebSocket(`${proto}//${host}/api/ws`);
-      intentionalClose = false;
+    async function poll() {
+      try {
+        const response = await fetch('/api/now-playing', {
+          signal: AbortSignal.timeout(10000) // 10s timeout, slightly more than server
+        });
 
-      ws.onopen = () => {
-        console.log('WebSocket connected');
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.error) {
-            intentionalClose = true; // Set flag before closing
-            els.state.textContent = data.message || 'An unknown error occurred.';
+        if (response.status === 500) {
+            const errorData = await response.json();
+            els.state.textContent = errorData.detail || 'Sunucu hatası';
             els.dot.classList.remove('playing');
-            ws.close();
+            // Don't poll again on server error
             return;
-          }
-          updateUI(data);
-        } catch (e) {
-          console.error('Failed to parse message or update UI:', e);
-          els.state.textContent = 'Data parsing error.';
-          intentionalClose = true;
-          ws.close();
         }
-      };
 
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        updateUI(data);
+
+        // Immediately poll again after receiving a response
+        setTimeout(poll, 0);
+
+      } catch (error) {
+        console.error('Polling error:', error);
         els.state.textContent = 'Bağlantı hatası';
-        intentionalClose = true; // Also treat WebSocket errors as intentional
-      };
-
-      ws.onclose = () => {
-        if (!intentionalClose) {
-          console.log('WebSocket disconnected. Attempting to reconnect...');
-          els.state.textContent = 'Yeniden bağlanılıyor...';
-          setTimeout(connect, 5000); // Reconnect after 5 seconds
-        } else {
-          console.log('WebSocket closed intentionally.');
-        }
-      };
+        els.dot.classList.remove('playing');
+        // Wait 5 seconds before retrying on network error
+        setTimeout(poll, 5000);
+      }
     }
 
-    connect();
+    poll();
   </script>
 </body>
 </html>
