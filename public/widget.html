@@ -141,7 +141,6 @@
 
   <script>
     const ENDPOINT = '/api/now-playing';
-    const REFRESH_MS = 1000;
 
     const els = {
       cover: document.getElementById('cover'),
@@ -154,9 +153,7 @@
       progress: document.getElementById('progress')
     };
 
-    let timer = null;
     let progressTimer = null;
-    let lastPayload = '';
 
     function formatTime(ms) {
         if (!ms) return '0:00';
@@ -177,91 +174,83 @@
       return {title, artists};
     }
 
-    async function fetchNowPlaying(){
-      try{
-        const r = await fetch(ENDPOINT, {cache:'no-store'});
-        if(!r.ok) throw new Error('HTTP ' + r.status);
-        const data = await r.json();
+    function updateUI(data) {
+      if (progressTimer) clearInterval(progressTimer);
 
-        const payload = JSON.stringify(data);
-        if(payload === lastPayload) return;
-        lastPayload = payload;
+      const { current_track, album_cover, spotify_link, currently_playing, progress_ms, duration_ms } = data;
 
-        const {current_track, album_cover, spotify_link, currently_playing, progress_ms, duration_ms} = data;
+      if (currently_playing && progress_ms && duration_ms) {
+        let currentProgress = progress_ms;
+        els.progress.textContent = `${formatTime(currentProgress)} / ${formatTime(duration_ms)}`;
+        progressTimer = setInterval(() => {
+          currentProgress += 1000;
+          if (currentProgress > duration_ms) {
+            currentProgress = duration_ms;
+            clearInterval(progressTimer);
+          }
+          els.progress.textContent = `${formatTime(currentProgress)} / ${formatTime(duration_ms)}`;
+        }, 1000);
+      } else {
+        els.progress.textContent = '—';
+      }
 
-        if (progressTimer) clearInterval(progressTimer);
+      const parts = cleanTrackParts(current_track);
+      els.title.textContent = parts.title;
 
-        if (currently_playing && progress_ms && duration_ms) {
-            let currentProgress = progress_ms;
-            els.progress.textContent = `${formatTime(currentProgress)} / ${formatTime(duration_ms)}`;
+      let displayArtists = parts.artists;
+      const artistList = parts.artists.split(',');
+      if (artistList.length > 2) {
+        displayArtists = artistList.slice(0, 2).join(', ') + '...';
+      }
+      els.artist.textContent = displayArtists;
 
-            progressTimer = setInterval(() => {
-                currentProgress += 1000;
-                if (currentProgress > duration_ms) {
-                    currentProgress = duration_ms;
-                    clearInterval(progressTimer);
-                }
-                els.progress.textContent = `${formatTime(currentProgress)} / ${formatTime(duration_ms)}`;
-            }, 1000);
-        } else {
-            els.progress.textContent = '—';
-        }
+      els.state.textContent = currently_playing ? 'Now playing' : 'Paused';
+      els.dot.classList.toggle('playing', !!currently_playing);
+      els.pulse.style.borderColor = currently_playing ? 'rgba(29,185,84,.35)' : 'rgba(255,255,255,.08)';
 
-        const parts = cleanTrackParts(current_track);
+      if (album_cover && els.cover.src !== album_cover) {
+        const img = new Image();
+        img.onload = () => {
+          els.cover.src = album_cover;
+          els.cover.classList.add('loaded');
+          els.cover.classList.remove('skeleton');
+        };
+        img.src = album_cover;
+      }
 
-        els.title.textContent = parts.title;
-
-        let displayArtists = parts.artists;
-        const artistList = parts.artists.split(',');
-        if (artistList.length > 2) {
-            displayArtists = artistList.slice(0, 2).join(', ') + '...';
-        }
-        els.artist.textContent = displayArtists;
-
-        els.state.textContent = currently_playing ? 'Now playing' : 'Paused';
-        els.dot.classList.toggle('playing', !!currently_playing);
-        els.pulse.style.borderColor = currently_playing ? 'rgba(29,185,84,.35)' : 'rgba(255,255,255,.08)';
-
-        if (album_cover) {
-          const img = new Image();
-          img.onload = () => {
-            els.cover.src = album_cover;
-            els.cover.classList.add('loaded');
-            els.cover.classList.remove('skeleton');
-          };
-          img.src = album_cover;
-        }
-
-        if (spotify_link && currently_playing) {
-          els.link.href = spotify_link;
-          els.link.style.pointerEvents = 'auto';
-        } else {
-          els.link.removeAttribute('href');
-          els.link.style.pointerEvents = 'none';
-        }
-
-      } catch(e){
-        els.state.textContent = 'Connection error';
-        els.dot.classList.remove('playing');
-        els.pulse.style.borderColor = 'rgba(255,255,255,.08)';
+      if (spotify_link && currently_playing) {
+        els.link.href = spotify_link;
+        els.link.style.pointerEvents = 'auto';
+      } else {
+        els.link.removeAttribute('href');
+        els.link.style.pointerEvents = 'none';
       }
     }
 
-    function start(){
-      fetchNowPlaying();
-      timer = setInterval(fetchNowPlaying, REFRESH_MS);
+    function connect() {
+      const eventSource = new EventSource(ENDPOINT);
 
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && !timer) {
-          timer = setInterval(fetchNowPlaying, REFRESH_MS);
-          fetchNowPlaying();
-        } else if (document.visibilityState !== 'visible' && timer) {
-          clearInterval(timer); timer = null;
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.error) {
+            throw new Error(data.error);
+          }
+          updateUI(data);
+        } catch (e) {
+          console.error("Failed to parse or update UI:", e);
+          els.state.textContent = 'Data error';
         }
-      });
+      };
+
+      eventSource.onerror = () => {
+        els.state.textContent = 'Reconnecting…';
+        eventSource.close();
+        setTimeout(connect, 3000); // Attempt to reconnect after 3 seconds
+      };
     }
 
-    start();
+    connect();
   </script>
 </body>
 </html>
