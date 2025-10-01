@@ -255,15 +255,12 @@
       };
 
       eventSource.onerror = () => {
-        // Sunucu bağlantıyı kapattığında (örneğin timeout nedeniyle) bu olay tetiklenir.
-        // EventSource API'si otomatik olarak yeniden bağlanmaya çalışır,
-        // ancak biz burada durumu kullanıcıya bildirip manuel olarak da yönetebiliriz.
-        els.state.textContent = 'Bağlantı kesildi, yeniden bağlanılıyor...';
-        // EventSource'un kendi yeniden bağlanma mekanizması yeterlidir,
-        // ancak tarayıcı desteği veya belirli durumlar için manuel bir timeout eklemek
-        // ek bir güvence katmanı sağlar.
-        eventSource.close(); // Eski bağlantıyı temizle
-        setTimeout(connect, 1000); // 1 saniye sonra yeni bağlantı kur
+        // The server will close the connection after ~15 minutes (background function timeout).
+        // The EventSource API will automatically try to reconnect, but to be safe,
+        // we explicitly close the old connection and start a new one.
+        // We don't show a message to the user, making the reconnect seamless.
+        eventSource.close();
+        setTimeout(connect, 1000); // Reconnect after 1 second.
       };
     }
 
