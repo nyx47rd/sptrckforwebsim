@@ -2,10 +2,7 @@ import os
 import datetime
 import base64
 import requests
-import asyncio
-import json
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,12 +18,11 @@ MY_SPOTIFY_REFRESH_TOKEN = os.getenv("MY_SPOTIFY_REFRESH_TOKEN")
 SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
 SPOTIFY_API_BASE_URL = "https://api.spotify.com/v1"
 
-# --- IN-MEMORY CACHE FOR TOKEN ---
+# --- IN-MEMORY CACHE ---
 cached_access_token = None
 token_expiry_time = None
 
 # --- SPOTIFY HELPER FUNCTIONS ---
-
 def spotify_refresh_access_token():
     global cached_access_token, token_expiry_time
     if cached_access_token and token_expiry_time and datetime.datetime.utcnow() < token_expiry_time:
@@ -47,10 +43,7 @@ def spotify_refresh_access_token():
     return cached_access_token
 
 def spotify_get_currently_playing(access_token: str):
-    response = requests.get(
-        f"{SPOTIFY_API_BASE_URL}/me/player/currently-playing",
-        headers={"Authorization": f"Bearer {access_token}"},
-    )
+    response = requests.get(f"{SPOTIFY_API_BASE_URL}/me/player/currently-playing", headers={"Authorization": f"Bearer {access_token}"})
     if response.status_code == 204: return None
     response.raise_for_status()
     return response.json()
@@ -66,70 +59,38 @@ class NowPlayingResponse(BaseModel):
 
 # --- FASTAPI APP ---
 app = FastAPI()
-origins = ["https://websim.com", "http://localhost", "http://localhost:3000"]
+origins = ["https://websim.com", "http://localhost", "http://localhost:3000", "*"]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-
-async def now_playing_stream_generator(request: Request):
-    try:
-        last_payload = None
-        if not all([SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, MY_SPOTIFY_REFRESH_TOKEN]):
-            error_message = {
-                "error": "server_misconfigured",
-                "message": "Server is not configured. Contact site owner."
-            }
-            yield f"data: {json.dumps(error_message)}\n\n"
-            return
-
-        while True:
-            if await request.is_disconnected():
-                break
-
-            access_token = spotify_refresh_access_token()
-            currently_playing_data = spotify_get_currently_playing(access_token)
-
-            if currently_playing_data and currently_playing_data.get("is_playing"):
-                item = currently_playing_data.get("item", {})
-                if not item:
-                    response_data = NowPlayingResponse(
-                        current_track="Playing something not exposed by API",
-                        album_cover=None, spotify_link=None, currently_playing=True,
-                        progress_ms=None, duration_ms=None,
-                    )
-                else:
-                    response_data = NowPlayingResponse(
-                        current_track=f"{item.get('name', 'Unknown Track')} by {', '.join(artist.get('name') for artist in item.get('artists', []))}",
-                        album_cover=item.get("album", {}).get("images", [{}])[0].get("url"),
-                        spotify_link=item.get("external_urls", {}).get("spotify"),
-                        currently_playing=True,
-                        progress_ms=currently_playing_data.get("progress_ms"),
-                        duration_ms=item.get("duration_ms"),
-                    )
-            else:
-                response_data = NowPlayingResponse(
-                    current_track="Not currently listening", album_cover=None,
-                    spotify_link=None, currently_playing=False,
-                    progress_ms=None, duration_ms=None,
-                )
-
-            current_payload = response_data.model_dump_json()
-            if current_payload != last_payload:
-                yield f"data: {current_payload}\n\n"
-                last_payload = current_payload
-
-            await asyncio.sleep(2)
-
-    except Exception as e:
-        # Broad exception handler to catch any unexpected error during the stream
-        error_message = {
-            "error": "unexpected_server_error",
-            "message": f"A critical server error occurred: {str(e)}"
-        }
-        yield f"data: {json.dumps(error_message)}\n\n"
 
 @app.get("/api")
 def handle_root():
     return {"message": "Personal Now Listening API"}
 
-@app.get("/api/now-playing")
-async def now_playing_sse(request: Request):
-    return StreamingResponse(now_playing_stream_generator(request), media_type="text/event-stream")
+@app.get("/api/now-playing", response_model=NowPlayingResponse)
+def get_now_playing():
+    if not all([SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, MY_SPOTIFY_REFRESH_TOKEN]):
+        raise HTTPException(status_code=500, detail="Server is not configured. Contact site owner.")
+
+    try:
+        access_token = spotify_refresh_access_token()
+        currently_playing_data = spotify_get_currently_playing(access_token)
+
+        if currently_playing_data and currently_playing_data.get("is_playing"):
+            item = currently_playing_data.get("item", {})
+            response_data = NowPlayingResponse(
+                current_track=f"{item.get('name', 'Unknown Track')} by {', '.join(artist.get('name') for artist in item.get('artists', []))}",
+                album_cover=item.get("album", {}).get("images", [{}])[0].get("url") if item else None,
+                spotify_link=item.get("external_urls", {}).get("spotify") if item else None,
+                currently_playing=True,
+                progress_ms=currently_playing_data.get("progress_ms"),
+                duration_ms=item.get("duration_ms") if item else None,
+            )
+        else:
+            response_data = NowPlayingResponse(
+                current_track="Not currently listening", album_cover=None,
+                spotify_link=None, currently_playing=False,
+                progress_ms=None, duration_ms=None,
+            )
+        return response_data
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Error fetching data from Spotify: {e}")
