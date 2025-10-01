@@ -120,7 +120,7 @@
         <div class="meta">
           <div class="status">
             <span id="dot" class="dot"></span>
-            <span id="state" class="state">Connecting…</span>
+            <span id="state" class="state">Sunucuya sinyal gönderiliyor...</span>
           </div>
           <div class="title">
             <span id="title-text">—</span>
@@ -233,19 +233,17 @@
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.error === 'server_misconfigured') {
-            els.state.textContent = data.message;
-            els.dot.classList.remove('playing');
-            eventSource.close(); // Stop trying to reconnect
-            return;
-          }
           if (data.error) {
-            throw new Error(data.error);
+            // Handle both server misconfiguration and other unexpected errors
+            els.state.textContent = data.message || 'An unknown error occurred.';
+            els.dot.classList.remove('playing');
+            eventSource.close(); // Stop all reconnection attempts
+            return;
           }
           updateUI(data);
         } catch (e) {
           console.error("Failed to parse or update UI:", e);
-          els.state.textContent = 'Data error';
+          els.state.textContent = 'Data parsing error.';
         }
       };
 

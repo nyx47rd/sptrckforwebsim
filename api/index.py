@@ -70,19 +70,20 @@ origins = ["https://websim.com", "http://localhost", "http://localhost:3000"]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 async def now_playing_stream_generator(request: Request):
-    last_payload = None
-    if not all([SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, MY_SPOTIFY_REFRESH_TOKEN]):
-        error_message = {
-            "error": "server_misconfigured",
-            "message": "Server is not configured. Contact site owner."
-        }
-        yield f"data: {json.dumps(error_message)}\n\n"
-        return
+    try:
+        last_payload = None
+        if not all([SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, MY_SPOTIFY_REFRESH_TOKEN]):
+            error_message = {
+                "error": "server_misconfigured",
+                "message": "Server is not configured. Contact site owner."
+            }
+            yield f"data: {json.dumps(error_message)}\n\n"
+            return
 
-    while True:
-        if await request.is_disconnected():
-            break
-        try:
+        while True:
+            if await request.is_disconnected():
+                break
+
             access_token = spotify_refresh_access_token()
             currently_playing_data = spotify_get_currently_playing(access_token)
 
@@ -115,14 +116,15 @@ async def now_playing_stream_generator(request: Request):
                 yield f"data: {current_payload}\n\n"
                 last_payload = current_payload
 
-        except (requests.exceptions.RequestException, HTTPException) as e:
-            error_message = {"error": f"Error fetching from Spotify: {e}"}
-            yield f"data: {json.dumps(error_message)}\n\n"
-        except Exception as e:
-            error_message = {"error": f"An unexpected error occurred: {e}"}
-            yield f"data: {json.dumps(error_message)}\n\n"
+            await asyncio.sleep(2)
 
-        await asyncio.sleep(2)
+    except Exception as e:
+        # Broad exception handler to catch any unexpected error during the stream
+        error_message = {
+            "error": "unexpected_server_error",
+            "message": f"A critical server error occurred: {str(e)}"
+        }
+        yield f"data: {json.dumps(error_message)}\n\n"
 
 @app.get("/api")
 def handle_root():
