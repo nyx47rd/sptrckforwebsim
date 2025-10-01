@@ -120,7 +120,7 @@
         <div class="meta">
           <div class="status">
             <span id="dot" class="dot"></span>
-            <span id="state" class="state">Connecting…</span>
+            <span id="state" class="state">Sunucuya sinyal gönderiliyor...</span>
           </div>
           <div class="title">
             <span id="title-text">—</span>
@@ -234,19 +234,25 @@
         try {
           const data = JSON.parse(event.data);
           if (data.error) {
-            throw new Error(data.error);
+            // Handle both server misconfiguration and other unexpected errors
+            els.state.textContent = data.message || 'An unknown error occurred.';
+            els.dot.classList.remove('playing');
+            eventSource.close(); // Stop all reconnection attempts
+            return;
           }
           updateUI(data);
         } catch (e) {
           console.error("Failed to parse or update UI:", e);
-          els.state.textContent = 'Data error';
+          els.state.textContent = 'Data parsing error.';
         }
       };
 
       eventSource.onerror = () => {
+        // This will trigger if the connection is lost, e.g., Vercel timeout
+        // It won't trigger for the initial misconfiguration error if the server sends a message first.
         els.state.textContent = 'Reconnecting…';
         eventSource.close();
-        setTimeout(connect, 3000); // Attempt to reconnect after 3 seconds
+        setTimeout(connect, 5000); // Attempt to reconnect after 5 seconds
       };
     }
 
