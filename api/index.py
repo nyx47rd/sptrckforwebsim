@@ -46,7 +46,7 @@ def spotify_refresh_access_token():
     return cached_access_token
 
 def spotify_get_currently_playing(access_token: str):
-    response = requests.get(f"{SPOTIFY_API_BASE_URL}/me/player/currently-playing", headers={"Authorization": f"Bearer {access_token}"})
+    response = requests.get(f"{SPOTIFY_API_BASE_URL}/me/player/currently-playing", headers={"Authorization": f"Bearer {access_token}"}, timeout=30)
     if response.status_code == 204: return None
     response.raise_for_status()
     return response.json()
