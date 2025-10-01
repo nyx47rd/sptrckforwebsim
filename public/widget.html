@@ -233,6 +233,12 @@
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          if (data.error === 'server_misconfigured') {
+            els.state.textContent = data.message;
+            els.dot.classList.remove('playing');
+            eventSource.close(); // Stop trying to reconnect
+            return;
+          }
           if (data.error) {
             throw new Error(data.error);
           }
@@ -244,9 +250,11 @@
       };
 
       eventSource.onerror = () => {
+        // This will trigger if the connection is lost, e.g., Vercel timeout
+        // It won't trigger for the initial misconfiguration error if the server sends a message first.
         els.state.textContent = 'Reconnecting…';
         eventSource.close();
-        setTimeout(connect, 3000); // Attempt to reconnect after 3 seconds
+        setTimeout(connect, 5000); // Attempt to reconnect after 5 seconds
       };
     }
 

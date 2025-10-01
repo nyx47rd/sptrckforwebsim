@@ -72,7 +72,12 @@ app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True
 async def now_playing_stream_generator(request: Request):
     last_payload = None
     if not all([SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, MY_SPOTIFY_REFRESH_TOKEN]):
-        raise HTTPException(status_code=500, detail="Server is not configured. Missing Spotify credentials.")
+        error_message = {
+            "error": "server_misconfigured",
+            "message": "Server is not configured. Contact site owner."
+        }
+        yield f"data: {json.dumps(error_message)}\n\n"
+        return
 
     while True:
         if await request.is_disconnected():
