@@ -233,26 +233,29 @@
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          // Sunucudan gelebilecek yapılandırılmış hata mesajlarını işle
           if (data.error) {
-            // Handle both server misconfiguration and other unexpected errors
-            els.state.textContent = data.message || 'An unknown error occurred.';
+            els.state.textContent = data.message || 'Bilinmeyen bir sunucu hatası oluştu.';
             els.dot.classList.remove('playing');
-            eventSource.close(); // Stop all reconnection attempts
+            // Hata durumunda yeniden bağlanmayı denemeden önce bağlantıyı kapat
+            eventSource.close();
+            // Belirli bir süre sonra yeniden bağlanmayı dene
+            setTimeout(connect, 5000);
             return;
           }
           updateUI(data);
         } catch (e) {
-          console.error("Failed to parse or update UI:", e);
-          els.state.textContent = 'Data parsing error.';
+          console.error("Veri işlenirken hata oluştu:", e);
+          els.state.textContent = 'Veri işleme hatası.';
         }
       };
 
       eventSource.onerror = () => {
-        // This will trigger if the connection is lost, e.g., Vercel timeout
-        // It won't trigger for the initial misconfiguration error if the server sends a message first.
-        els.state.textContent = 'Reconnecting…';
+        // The server closes the connection after ~9s due to the serverless function timeout.
+        // This handler ensures a new connection is established immediately and silently
+        // in the background, providing a seamless experience for the user.
         eventSource.close();
-        setTimeout(connect, 5000); // Attempt to reconnect after 5 seconds
+        setTimeout(connect, 1000);
       };
     }
 
