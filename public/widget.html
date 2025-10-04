@@ -227,39 +227,30 @@
       }
     }
 
-    function connect() {
-      const eventSource = new EventSource(ENDPOINT);
-
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          // Sunucudan gelebilecek yapılandırılmış hata mesajlarını işle
-          if (data.error) {
-            els.state.textContent = data.message || 'Bilinmeyen bir sunucu hatası oluştu.';
-            els.dot.classList.remove('playing');
-            // Hata durumunda yeniden bağlanmayı denemeden önce bağlantıyı kapat
-            eventSource.close();
-            // Belirli bir süre sonra yeniden bağlanmayı dene
-            setTimeout(connect, 5000);
-            return;
+    async function fetchNowPlaying() {
+      try {
+        const response = await fetch(ENDPOINT);
+        if (!response.ok) {
+          const errorData = await response.json();
+          const detail = errorData.detail;
+          if (typeof detail === 'object' && detail.message) {
+            els.state.textContent = detail.message;
+          } else {
+            els.state.textContent = 'An error occurred.';
           }
-          updateUI(data);
-        } catch (e) {
-          console.error("Veri işlenirken hata oluştu:", e);
-          els.state.textContent = 'Veri işleme hatası.';
+          els.dot.classList.remove('playing');
+          return;
         }
-      };
-
-      eventSource.onerror = () => {
-        // The server closes the connection after ~9s due to the serverless function timeout.
-        // This handler ensures a new connection is established immediately and silently
-        // in the background, providing a seamless experience for the user.
-        eventSource.close();
-        setTimeout(connect, 1000);
-      };
+        const data = await response.json();
+        updateUI(data);
+      } catch (error) {
+        console.error('Error fetching now playing data:', error);
+        els.state.textContent = 'Connection error.';
+      }
     }
 
-    connect();
+    fetchNowPlaying();
+    setInterval(fetchNowPlaying, 60000);
   </script>
 </body>
 </html>
