@@ -230,10 +230,6 @@
     function connect() {
       const eventSource = new EventSource(ENDPOINT);
 
-      eventSource.onopen = () => {
-        els.state.textContent = 'Bağlantı kuruldu, veri bekleniyor...';
-      };
-
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
@@ -255,12 +251,11 @@
       };
 
       eventSource.onerror = () => {
-        // The server will close the connection after ~15 minutes (background function timeout).
-        // The EventSource API will automatically try to reconnect, but to be safe,
-        // we explicitly close the old connection and start a new one.
-        // We don't show a message to the user, making the reconnect seamless.
+        // The server closes the connection after ~9s due to the serverless function timeout.
+        // This handler ensures a new connection is established immediately and silently
+        // in the background, providing a seamless experience for the user.
         eventSource.close();
-        setTimeout(connect, 1000); // Reconnect after 1 second.
+        setTimeout(connect, 1000);
       };
     }
 

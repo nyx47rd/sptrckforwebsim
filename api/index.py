@@ -70,8 +70,8 @@ app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True
 
 async def now_playing_stream_generator(request: Request):
     last_payload = None
-    # Netlify's background function timeout is 15min. We run for ~14m 50s.
-    stream_duration = 890
+    # Netlify's timeout is 10s for the free tier. We run for ~9s.
+    stream_duration = 9
     start_time = datetime.datetime.now()
 
     if not all([SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, MY_SPOTIFY_REFRESH_TOKEN]):
