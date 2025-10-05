@@ -4,8 +4,7 @@ import base64
 import requests
 import asyncio
 import json
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
@@ -68,65 +67,52 @@ app = FastAPI()
 origins = ["*"]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-async def now_playing_stream_generator(request: Request):
-    last_payload = None
-    # Netlify's timeout is 10s for the free tier. We run for ~9s.
-    stream_duration = 9
-    start_time = datetime.datetime.now()
-
+@app.get("/api/now-playing", response_model=NowPlayingResponse)
+async def now_playing():
     if not all([SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, MY_SPOTIFY_REFRESH_TOKEN]):
-        error_message = {
-            "error": "server_misconfigured",
-            "message": "Sunucu yapılandırılmamış. Site sahibiyle iletişime geçin."
-        }
-        yield f"data: {json.dumps(error_message)}\n\n"
-        return
+        raise HTTPException(
+            status_code=500,
+            detail="Sunucu yapılandırılmamış. Site sahibiyle iletişime geçin."
+        )
 
-    while (datetime.datetime.now() - start_time).total_seconds() < stream_duration:
-        if await request.is_disconnected():
-            break
+    try:
+        access_token = spotify_refresh_access_token()
+        currently_playing_data = spotify_get_currently_playing(access_token)
 
-        try:
-            access_token = spotify_refresh_access_token()
-            currently_playing_data = spotify_get_currently_playing(access_token)
-
-            if currently_playing_data and currently_playing_data.get("is_playing"):
-                item = currently_playing_data.get("item", {})
-                if not item:
-                    response_data = NowPlayingResponse(
-                        current_track="API tarafından gösterilmeyen bir içerik oynatılıyor",
-                        album_cover=None, spotify_link=None, currently_playing=True,
-                        progress_ms=None, duration_ms=None,
-                    )
-                else:
-                    response_data = NowPlayingResponse(
-                        current_track=f"{item.get('name', 'Bilinmeyen Şarkı')} by {', '.join(artist.get('name') for artist in item.get('artists', []))}",
-                        album_cover=item.get("album", {}).get("images", [{}])[0].get("url"),
-                        spotify_link=item.get("external_urls", {}).get("spotify"),
-                        currently_playing=True,
-                        progress_ms=currently_playing_data.get("progress_ms"),
-                        duration_ms=item.get("duration_ms"),
-                    )
-            else:
+        if currently_playing_data and currently_playing_data.get("is_playing"):
+            item = currently_playing_data.get("item", {})
+            if not item:
                 response_data = NowPlayingResponse(
-                    current_track="Şu anda bir şey dinlemiyor", album_cover=None,
-                    spotify_link=None, currently_playing=False,
+                    current_track="API tarafından gösterilmeyen bir içerik oynatılıyor",
+                    album_cover=None, spotify_link=None, currently_playing=True,
                     progress_ms=None, duration_ms=None,
                 )
+            else:
+                response_data = NowPlayingResponse(
+                    current_track=f"{item.get('name', 'Bilinmeyen Şarkı')} by {', '.join(artist.get('name') for artist in item.get('artists', []))}",
+                    album_cover=item.get("album", {}).get("images", [{}])[0].get("url"),
+                    spotify_link=item.get("external_urls", {}).get("spotify"),
+                    currently_playing=True,
+                    progress_ms=currently_playing_data.get("progress_ms"),
+                    duration_ms=item.get("duration_ms"),
+                )
+        else:
+            response_data = NowPlayingResponse(
+                current_track="Şu anda bir şey dinlemiyor", album_cover=None,
+                spotify_link=None, currently_playing=False,
+                progress_ms=None, duration_ms=None,
+            )
 
-            current_payload = response_data.model_dump_json()
-            if current_payload != last_payload:
-                yield f"data: {current_payload}\n\n"
-                last_payload = current_payload
+        # JSON içeriğini manuel olarak oluşturup başlıkları ayarlama
+        json_content = response_data.model_dump_json()
+        return Response(
+            content=json_content,
+            media_type="application/json",
+            headers={
+                "Cache-Control": "s-maxage=15, stale-while-revalidate"
+            }
+        )
 
-        except Exception as e:
-            error_message = { "error": "streaming_error", "message": f"Veri akışında bir hata oluştu: {str(e)}" }
-            yield f"data: {json.dumps(error_message)}\n\n"
-            # We break the loop on error to allow the client to reconnect
-            break
-
-        await asyncio.sleep(2)
-
-@app.get("/api/now-playing")
-async def now_playing_sse(request: Request):
-    return StreamingResponse(now_playing_stream_generator(request), media_type="text/event-stream")
+    except Exception as e:
+        # Hata durumlarını daha iyi yönetmek için
+        raise HTTPException(status_code=500, detail=f"Veri alınırken bir hata oluştu: {str(e)}")

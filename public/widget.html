@@ -227,39 +227,25 @@
       }
     }
 
-    function connect() {
-      const eventSource = new EventSource(ENDPOINT);
-
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          // Sunucudan gelebilecek yapılandırılmış hata mesajlarını işle
-          if (data.error) {
-            els.state.textContent = data.message || 'Bilinmeyen bir sunucu hatası oluştu.';
-            els.dot.classList.remove('playing');
-            // Hata durumunda yeniden bağlanmayı denemeden önce bağlantıyı kapat
-            eventSource.close();
-            // Belirli bir süre sonra yeniden bağlanmayı dene
-            setTimeout(connect, 5000);
-            return;
-          }
-          updateUI(data);
-        } catch (e) {
-          console.error("Veri işlenirken hata oluştu:", e);
-          els.state.textContent = 'Veri işleme hatası.';
+    async function fetchNowPlaying() {
+      try {
+        const response = await fetch(ENDPOINT);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Sunucudan veri alınamadı.');
         }
-      };
-
-      eventSource.onerror = () => {
-        // The server closes the connection after ~9s due to the serverless function timeout.
-        // This handler ensures a new connection is established immediately and silently
-        // in the background, providing a seamless experience for the user.
-        eventSource.close();
-        setTimeout(connect, 1000);
-      };
+        const data = await response.json();
+        updateUI(data);
+      } catch (error) {
+        console.error('Veri alınırken hata:', error);
+        els.state.textContent = error.message;
+        els.dot.classList.remove('playing');
+      }
     }
 
-    connect();
+    // İlk yüklemede ve ardından her 60 saniyede bir veriyi çek
+    fetchNowPlaying();
+    setInterval(fetchNowPlaying, 60000);
   </script>
 </body>
 </html>
