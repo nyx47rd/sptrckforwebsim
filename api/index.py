@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
+from mangum import Mangum
 
 # --- .ENV LOADING ---
 load_dotenv()
@@ -116,3 +117,5 @@ async def now_playing():
     except Exception as e:
         # Hata durumlarını daha iyi yönetmek için
         raise HTTPException(status_code=500, detail=f"Veri alınırken bir hata oluştu: {str(e)}")
+
+handler = Mangum(app)
