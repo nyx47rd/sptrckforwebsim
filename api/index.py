@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
+from mangum import Mangum
 
 # --- .ENV LOADING ---
 load_dotenv()
@@ -107,3 +108,6 @@ async def now_playing():
         raise HTTPException(status_code=e.response.status_code, detail={"error": "spotify_api_error", "message": f"Error fetching data from Spotify: {e}"})
     except Exception as e:
         raise HTTPException(status_code=500, detail={"error": "internal_server_error", "message": f"An unexpected error occurred: {e}"})
+
+# This handler is the entry point for Netlify's serverless function.
+handler = Mangum(app)
