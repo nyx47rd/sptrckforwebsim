@@ -50,6 +50,35 @@ Create the following environment variables:
 
 After setting these variables, click **"Deploy site"**. Once the deployment is complete, your widget will be live.
 
+To get the personal "Now Playing" widget (`/api/now-playing`) working, you need to obtain a `refresh_token` for your own Spotify account. This script simplifies the process.
+
+1.  **Add a new Redirect URI to your Spotify App:**
+    -   Go to your [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/) and select your app.
+    -   Click "Edit Settings".
+    -   Add `https://example.com/callback` to your list of Redirect URIs and save.
+
+2.  **Prepare your local environment:**
+    -   Make sure you have cloned the project and installed dependencies (`pip install -r requirements.txt`).
+    -   Create a `.env` file in the project's root directory.
+    -   Fill in `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` from your dashboard.
+    -   Set `SPOTIFY_REDIRECT_URI` to `https://example.com/callback`.
+
+3.  **Run the script:**
+    -   Run the following command in your terminal:
+        ```bash
+        python generate_token.py
+        ```
+    -   The script will give you a URL. Open it, log in, and grant permissions.
+    -   You will be redirected to an `example.com` page that doesn't exist. This is expected. Copy the full URL from your browser's address bar.
+    -   Paste the URL back into your terminal when prompted.
+
+4.  **Set the Environment Variable:**
+    -   The script will print your `Refresh Token`. Copy this value.
+    -   Go to your Vercel project settings and set the `MY_SPOTIFY_REFRESH_TOKEN` environment variable to the value you just copied.
+
+### Step 6: Deploy the Project
+
+Vercel will automatically deploy any changes to your repository's `main` branch. After setting the environment variables, you can trigger a new deployment from the Vercel dashboard
 ---
 
 ## 💻 Usage
