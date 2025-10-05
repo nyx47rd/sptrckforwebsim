@@ -1,102 +1,57 @@
-# Spotify Track Sharer & Now Playing Widget
+# Last.fm Now Playing Widget
 
-This project is a web application that allows users to share the song they are currently listening to on Spotify with their friends, and an API that provides a personal "Now Playing" widget. It is built with FastAPI and designed for deployment on Vercel.
+This project provides a personal "Now Playing" widget that displays the track you are currently listening to, using the Last.fm API. It is built with FastAPI and designed for easy deployment on Netlify.
 
 ## ✨ Features
 
--   **Multi-User Sharing:** Users can log in and share with others what they are currently listening to.
--   **Personal "Now Playing" Widget:** Thanks to this widget, when you go to `https://your-vercel-app-name.vercel.app/public/widget.html` you will see a widget showing the currently playing song. You can embed this widget on a website if you want.
--   **Automatic Updates:** A background task periodically updates the currently playing tracks for all active users.
--   **Easy Deployment:** Designed for easy deployment with Vercel and a cloud database provider (e.g., Neon).
+-   **Personal "Now Playing" Widget:** An embeddable widget that shows your currently playing song from Last.fm.
+-   **Real-time Updates:** The widget polls the Last.fm API periodically to show your latest track.
+-   **Easy Deployment:** Designed for quick and easy deployment on Netlify.
+-   **Lightweight:** A simple and efficient backend powered by FastAPI.
 
 ## 🛠️ Tech Stack
 
 -   **Backend:** [FastAPI](https://fastapi.tiangolo.com/)
--   **Database:** [SQLAlchemy](https://www.sqlalchemy.org/) ORM with PostgreSQL (production) and SQLite (local development).
--   **Deployment:** [Vercel](https://vercel.com/)
--   **Spotify Integration:** [Spotify Web API](https://developer.spotify.com/documentation/web-api)
+-   **Deployment:** [Netlify](https://www.netlify.com/)
+-   **Music Service:** [Last.fm Web API](https://www.last.fm/api)
 
 ---
 
 ## 🚀 Setup and Deployment Guide
 
-Follow these steps to run this project on your own Vercel account.
+Follow these steps to deploy this project on your own Netlify account.
 
-### Step 1: Fork & Clone the Project
+### Step 1: Fork the Project
 
-1.  **Fork** or **Use this template > Create a new repository** this GitHub repository to your own account.
-2.  Clone your forked repository to your local machine (**optional**):
-    ```bash
-    git clone https://github.com/YOUR_USERNAME/YOUR_PROJECT_NAME.git
-    cd YOUR_PROJECT_NAME
-    ```
+1.  **Fork** this GitHub repository to your own account.
 
-### Step 2: Create a Spotify Developer Application
+### Step 2: Get a Last.fm API Key
 
-1.  Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/) and log in.
-2.  Click the **"Create App"** button to create a new application.
-3.  After creating your app, take note of the **"Client ID"** and **"Client Secret"**. You can view the secret by clicking "Show client secret".
-4.  Click the **"Edit Settings"** button.
-5.  In the **"Redirect URIs"** section, add the URL of your Vercel application followed by the `/auth/callback` path. For example:
-    -   `https://your-project.vercel.app/auth/callback`
-    -   For local development: `http://127.0.0.1:8000/auth/callback`
-6.  Save the settings.
+1.  Go to the [Last.fm API page](https://www.last.fm/api/account/create) and create an API account.
+2.  Fill out the form. You don't need a callback URL or application homepage, so you can enter any valid URL (e.g., your GitHub profile).
+3.  Once created, you will see your **API Key**. Keep this key safe.
 
-### Step 3: Create a Vercel Project and Database
+### Step 3: Deploy to Netlify
 
-1.  **Log in to Vercel:** Log in to your [Vercel](https://vercel.com/) account.
-2.  **Create a New Project:** Go to "Add New... -> Project", and select the repository you forked on GitHub.
-3.  **Create a Database:** On the project page, go to the "Storage" tab and create a new database with the "Postgres" option. After the database is created, you will be given a **`DATABASE_URL`**. Copy this URL. If you prefer, you can have these variables created automatically by choosing an easier provider like Neon.
+1.  Log in to your [Netlify](https://www.netlify.com/) account.
+2.  Click **"Add new site" -> "Import an existing project"** and select the repository you forked on GitHub.
+3.  Netlify will automatically detect the settings from the `netlify.toml` file.
 
 ### Step 4: Configure Environment Variables
 
-In your Vercel project's settings ("Settings" -> "Environment Variables"), create the following variables one by one and enter their values:
+Before deploying, Netlify will prompt you to add environment variables. You can also add them later in your Netlify project's settings (**Site settings > Build & deploy > Environment**).
 
-| Variable Name              | Description                                                                                                                  | Example Value                                |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| `SPOTIFY_CLIENT_ID`        | The Client ID from your Spotify Developer Dashboard.                                                                         | `xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`           |
-| `SPOTIFY_CLIENT_SECRET`    | The Client Secret from your Spotify Developer Dashboard.                                                                     | `xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`           |
-| `SPOTIFY_REDIRECT_URI`     | The Redirect URI you added to your Spotify settings.                                                                         | `https://your-project.vercel.app/auth/callback` |
-| `DATABASE_URL`             | The PostgreSQL connection URL from Vercel or another provider (If you choose a provider from Vercel, this information will automatically be added to the Environment Variables section)                                                             | `postgres://...`                             |
-| `MY_SPOTIFY_REFRESH_TOKEN` | Your personal Spotify refresh token to be used for the "Now Playing" widget. (You will obtain this in the next step).         | `AQ...`                                      |
+Create the following environment variables:
 
-### Step 5: Generate Your Personal Refresh Token
+| Variable Name     | Description                                | Example Value              |
+| ----------------- | ------------------------------------------ | -------------------------- |
+| `LASTFM_API_KEY`  | The API Key from your Last.fm API account. | `xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` |
+| `LASTFM_USERNAME` | Your Last.fm username.                     | `your_lastfm_username`     |
 
-To get the personal "Now Playing" widget (`/public/widget.html`) working, you need to obtain a `refresh_token` for your own Spotify account. You can get this directly from the application's authentication flow.
-
-1.  **Add a new Redirect URI to your Spotify App:**
-    -   Go to your [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/) and select your app.
-    -   Click "Edit Settings".
-    -   Add `https://example.com/callback` to your list of Redirect URIs and save.
-
-2.  **Prepare your local environment:**
-    -   Make sure you have cloned the project and installed dependencies (`pip install -r requirements.txt`).
-    -   Create a `.env` file in the project's root directory.
-    -   Fill in `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` from your dashboard. The script does not require any other variables.
-
-3.  **Run the script:**
-    -   Run the following command in your terminal:
-        ```bash
-        python generate_token.py
-        ```
-    -   The script will give you a URL. Open it, log in, and grant permissions.
-    -   You will be redirected to an `example.com` page that doesn't exist. This is expected. Copy the full URL from your browser's address bar.
-    -   Paste the URL back into your terminal when prompted.
-
-4.  **Set the Environment Variable:**
-    -   Go back to your Vercel project settings ("Settings" -> "Environment Variables").
-    -   Create a new environment variable named `MY_SPOTIFY_REFRESH_TOKEN`.
-    -   Paste the `refresh_token` you copied as the value.
-    -   Save the variable. Vercel will trigger a new deployment with this new variable.
-
-### Step 6: Deploy the Project
-
-Vercel will automatically deploy any changes to your repository's `main` branch. After setting the environment variables, you can trigger a new deployment from the Vercel dashboard.
+After setting these variables, click **"Deploy site"**. Once the deployment is complete, your widget will be live.
 
 ---
 
 ## 💻 Usage
 
--   **Login:** Go to `https://your-project.vercel.app/auth/login` to see the login page. Clicking the button will start the authorization flow.
--   **Start/Stop Sharing:** API endpoints (`/share/start`, `/share/stop`) are available for this feature. You can build a UI to interact with them.
--   **Personal Widget:** Get your own currently playing data from `https://your-project.vercel.app/public/widget.html`.
+-   **Personal Widget:** To see your widget, go to `https://your-netlify-app-name.netlify.app/widget.html`. You can embed this URL in your personal website or profile using an `<iframe>`.

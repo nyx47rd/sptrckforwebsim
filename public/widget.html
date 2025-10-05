@@ -126,7 +126,6 @@
             <span id="title-text">—</span>
           </div>
           <div id="artist" class="artist">—</div>
-          <div id="progress" class="artist">—</div>
         </div>
       </div>
       <div class="actions">
@@ -149,60 +148,14 @@
       state: document.getElementById('state'),
       title: document.getElementById('title-text'),
       artist: document.getElementById('artist'),
-      link: document.getElementById('cardLink'),
-      progress: document.getElementById('progress')
+      link: document.getElementById('cardLink')
     };
 
-    let progressTimer = null;
-
-    function formatTime(ms) {
-        if (!ms) return '0:00';
-        const seconds = Math.floor(ms / 1000);
-        const minutes = Math.floor(seconds / 60);
-        const remainingSeconds = seconds % 60;
-        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-    }
-
-    function cleanTrackParts(str){
-      if(!str || typeof str !== 'string') return {title:'—', artists:'—'};
-      const parts = str.split(' by ');
-      let title = (parts[0] || '').trim();
-      let artists = (parts[1] || '').trim();
-      if(artists.endsWith('.')) artists = artists.slice(0, -1);
-      if(!title) title = '—';
-      if(!artists) artists = '—';
-      return {title, artists};
-    }
-
     function updateUI(data) {
-      if (progressTimer) clearInterval(progressTimer);
+      const { track, artist, album_cover, track_link, currently_playing } = data;
 
-      const { current_track, album_cover, spotify_link, currently_playing, progress_ms, duration_ms } = data;
-
-      if (currently_playing && progress_ms && duration_ms) {
-        let currentProgress = progress_ms;
-        els.progress.textContent = `${formatTime(currentProgress)} / ${formatTime(duration_ms)}`;
-        progressTimer = setInterval(() => {
-          currentProgress += 1000;
-          if (currentProgress > duration_ms) {
-            currentProgress = duration_ms;
-            clearInterval(progressTimer);
-          }
-          els.progress.textContent = `${formatTime(currentProgress)} / ${formatTime(duration_ms)}`;
-        }, 1000);
-      } else {
-        els.progress.textContent = '—';
-      }
-
-      const parts = cleanTrackParts(current_track);
-      els.title.textContent = parts.title;
-
-      let displayArtists = parts.artists;
-      const artistList = parts.artists.split(',');
-      if (artistList.length > 2) {
-        displayArtists = artistList.slice(0, 2).join(', ') + '...';
-      }
-      els.artist.textContent = displayArtists;
+      els.title.textContent = track || '—';
+      els.artist.textContent = artist || '—';
 
       els.state.textContent = currently_playing ? 'Now playing' : 'Paused';
       els.dot.classList.toggle('playing', !!currently_playing);
@@ -216,10 +169,14 @@
           els.cover.classList.remove('skeleton');
         };
         img.src = album_cover;
+      } else if (!album_cover) {
+        els.cover.src = '';
+        els.cover.classList.add('skeleton');
+        els.cover.classList.remove('loaded');
       }
 
-      if (spotify_link && currently_playing) {
-        els.link.href = spotify_link;
+      if (track_link && currently_playing) {
+        els.link.href = track_link;
         els.link.style.pointerEvents = 'auto';
       } else {
         els.link.removeAttribute('href');
@@ -227,39 +184,25 @@
       }
     }
 
-    function connect() {
-      const eventSource = new EventSource(ENDPOINT);
-
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          // Sunucudan gelebilecek yapılandırılmış hata mesajlarını işle
-          if (data.error) {
-            els.state.textContent = data.message || 'Bilinmeyen bir sunucu hatası oluştu.';
-            els.dot.classList.remove('playing');
-            // Hata durumunda yeniden bağlanmayı denemeden önce bağlantıyı kapat
-            eventSource.close();
-            // Belirli bir süre sonra yeniden bağlanmayı dene
-            setTimeout(connect, 5000);
-            return;
-          }
-          updateUI(data);
-        } catch (e) {
-          console.error("Veri işlenirken hata oluştu:", e);
-          els.state.textContent = 'Veri işleme hatası.';
+    async function fetchNowPlaying() {
+      try {
+        const response = await fetch(ENDPOINT);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Sunucudan veri alınamadı.');
         }
-      };
-
-      eventSource.onerror = () => {
-        // The server closes the connection after ~9s due to the serverless function timeout.
-        // This handler ensures a new connection is established immediately and silently
-        // in the background, providing a seamless experience for the user.
-        eventSource.close();
-        setTimeout(connect, 1000);
-      };
+        const data = await response.json();
+        updateUI(data);
+      } catch (error) {
+        console.error('Veri alınırken hata:', error);
+        els.state.textContent = error.message;
+        els.dot.classList.remove('playing');
+      }
     }
 
-    connect();
+    // İlk yüklemede ve ardından her 60 saniyede bir veriyi çek
+    fetchNowPlaying();
+    setInterval(fetchNowPlaying, 60000);
   </script>
 </body>
 </html>
