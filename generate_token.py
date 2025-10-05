@@ -2,7 +2,6 @@ import os
 import sys
 from urllib.parse import urlparse, parse_qs, urlencode
 import requests
-import base64
 from dotenv import load_dotenv
 
 # Add project root to path to allow imports from other files
@@ -86,7 +85,7 @@ def main():
                 "code": auth_code,
                 "redirect_uri": script_redirect_uri,
             },
-        )
+        , timeout=30)
         response.raise_for_status()
         token_data = response.json()
 
