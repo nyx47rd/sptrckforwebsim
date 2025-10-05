@@ -27,7 +27,7 @@ def get_lastfm_recent_tracks():
         "format": "json",
         "limit": 1
     }
-    response = requests.get(LASTFM_API_BASE_URL, params=params)
+    response = requests.get(LASTFM_API_BASE_URL, params=params, timeout=30)
     response.raise_for_status()
     return response.json()
 
