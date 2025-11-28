@@ -4,11 +4,11 @@
   publish = "public/"
 
 [[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/index/:splat"
+  from = "/api/now-playing"
+  to = "/.netlify/functions/index/api/now-playing"
   status = 200
 
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
+  from = "/"
+  to = "/widget.html"
   status = 200
