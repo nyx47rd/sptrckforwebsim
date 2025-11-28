@@ -5,6 +5,7 @@ import requests
 import asyncio
 import json
 from fastapi import FastAPI, HTTPException, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
@@ -88,5 +89,8 @@ async def now_playing():
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Last.fm verisi alınırken hata: {str(e)}")
+
+# This must be mounted after all API routes
+app.mount("/", StaticFiles(directory="public", html=True), name="public")
 
 handler = Mangum(app)
