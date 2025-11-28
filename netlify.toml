@@ -3,12 +3,16 @@
   functions = "api/"
   publish = "public/"
 
+# This rule proxies the specific API endpoint to the 'index' function.
+# The original path should be passed to the function, resolving the 404.
 [[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/index/:splat"
+  from = "/api/now-playing"
+  to = "/.netlify/functions/index"
   status = 200
 
+# This rule serves as a catch-all for any other requests.
+# It serves widget.html, which is the main view of the app.
 [[redirects]]
   from = "/*"
-  to = "/index.html"
+  to = "/widget.html"
   status = 200
